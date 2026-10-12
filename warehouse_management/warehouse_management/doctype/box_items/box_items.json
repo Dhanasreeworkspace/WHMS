@@ -8,6 +8,8 @@
  "field_order": [
   "item",
   "qty",
+  "column_break_pbcu",
+  "racked_qty",
   "uom"
  ],
  "fields": [
@@ -32,13 +34,25 @@
    "in_list_view": 1,
    "label": "UOM",
    "options": "UOM"
+  },
+  {
+   "fieldname": "column_break_pbcu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "racked_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Racked Qty",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-08-20 17:19:46.914980",
+ "modified": "2026-10-12 14:43:14.071223",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Box Items",
