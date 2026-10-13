@@ -1,5 +1,6 @@
-import frappe
 import json
+
+import frappe
 from frappe import _
 from frappe.utils import flt
 
@@ -14,9 +15,7 @@ def get_racking_packing_lists(warehouse):
 
     packing_lists = frappe.get_all(
         "Packing List",
-        filters={
-            "docstatus": 1,
-        },
+        filters={"docstatus": 1},
         fields=[
             "name",
             "material_request",
@@ -29,22 +28,50 @@ def get_racking_packing_lists(warehouse):
     result = []
 
     for packing_list in packing_lists:
-
         mr = frappe.db.get_value(
             "Material Request",
             packing_list.material_request,
-            [
-                "status",
-                "workflow_state",
-                "set_warehouse",
-            ],
+            ["workflow_state", "set_warehouse"],
             as_dict=True,
         )
 
-        if mr.workflow_state != "Completed":
+        if mr.workflow_state != "Completed" or mr.set_warehouse != warehouse:
             continue
 
-        if mr.set_warehouse != warehouse:
+        # Get Bay warehouse
+        bay_warehouse = frappe.db.get_value(
+            "Warehouse",
+            {
+                "main_warehouse": warehouse,
+                "warehouse_type": "Bay",
+                "is_sub_warehouse": 1,
+            },
+            "name",
+        )
+
+        # Get racking Stock Entries
+        stock_entries = frappe.get_all(
+            "Stock Entry",
+            filters={
+                "material_request": packing_list.material_request,
+                "stock_entry_type": "Material Transfer",
+                "from_warehouse": bay_warehouse,
+                "docstatus": ["!=", 2],
+            },
+            fields=["name", "docstatus"],
+        )
+
+        # Determine racking status
+        racking_status = "To Start"
+
+        for entry in stock_entries:
+            if entry.docstatus == 1:
+                racking_status = "Completed"
+                break
+            elif entry.docstatus == 0:
+                racking_status = "In Progress"
+
+        if racking_status == "Completed":
             continue
 
         # Get received boxes
@@ -56,51 +83,67 @@ def get_racking_packing_lists(warehouse):
                 "parentfield": "items",
                 "is_received": 1,
             },
-            fields=[
-                "box_id",
-            ],
+            fields=["box_id"],
             order_by="idx asc",
         )
 
-        # Check boxes pending racking
-        pending_boxes = 0
-
-        for packing_box in boxes:
-            box = frappe.get_doc("Box", packing_box.box_id)
-            box_pending = False
-
-            for item in box.items:
-                racked_qty = flt(item.racked_qty)
-
-                if racked_qty < flt(item.qty):
-                    box_pending = True
-                    break
-
-            if box_pending:
-                pending_boxes += 1
-
-        if pending_boxes == 0:
+        if not boxes:
             continue
 
-        result.append(
-            {
-                "packing_list": packing_list.name,
-                "material_request": packing_list.material_request,
-                "total_boxes": packing_list.total_boxes,
-                "received_boxes": packing_list.received_boxes,
-                "pending_boxes": pending_boxes,
-            }
-        )
+        result.append({
+            "packing_list": packing_list.name,
+            "material_request": packing_list.material_request,
+            "total_boxes": packing_list.total_boxes,
+            "racking_status": racking_status,
+        })
 
     return result
 
 
 @frappe.whitelist()
 def get_racking_packing_list_details(packing_list):
-    """
-    Return received boxes that are pending racking.
-    """
+    """Return received boxes based on racking Stock Entry status."""
 
+    material_request = frappe.db.get_value(
+        "Packing List",
+        packing_list,
+        "material_request",
+    )
+
+    main_warehouse = frappe.db.get_value(
+        "Material Request",
+        material_request,
+        "set_warehouse",
+    )
+
+    bay_warehouse = frappe.db.get_value(
+        "Warehouse",
+        {
+            "main_warehouse": main_warehouse,
+            "warehouse_type": "Bay",
+            "is_sub_warehouse": 1,
+        },
+        "name",
+    )
+
+    # Check whether racking Stock Entry is submitted
+    submitted_stock_entry = frappe.db.exists(
+        "Stock Entry",
+        {
+            "material_request": material_request,
+            "stock_entry_type": "Material Transfer",
+            "from_warehouse": bay_warehouse,
+            "docstatus": 1,
+        },
+    )
+
+    if submitted_stock_entry:
+        return {
+            "total_box_count": 0,
+            "items": [],
+        }
+
+    # Get received boxes
     boxes = frappe.get_all(
         "Packing List Box",
         filters={
@@ -120,24 +163,11 @@ def get_racking_packing_list_details(packing_list):
     result = []
 
     for packing_box in boxes:
-        box = frappe.get_doc("Box", packing_box.box_id)
-        pending = False
-
-        for item in box.items:
-            if flt(item.racked_qty) < flt(item.qty):
-                pending = True
-                break
-
-        if not pending:
-            continue
-
-        result.append(
-            {
-                "box_id": packing_box.box_id,
-                "total_item": packing_box.total_item,
-                "is_received": packing_box.is_received,
-            }
-        )
+        result.append({
+            "box_id": packing_box.box_id,
+            "total_item": packing_box.total_item,
+            "is_received": packing_box.is_received,
+        })
 
     return {
         "total_box_count": len(result),
@@ -145,41 +175,17 @@ def get_racking_packing_list_details(packing_list):
     }
 
 
-import frappe
-
-
 @frappe.whitelist(methods=["GET"])
-def get_racking_box_item(box_id=None):
+def get_racking_box_item(box_id):
     """Get item details from Box."""
-
-    box_id = box_id or frappe.form_dict.get("box_id")
-
-    if not box_id:
-        frappe.throw("Box ID is required.")
 
     box_name = frappe.db.get_value(
         "Box",
         {"box_id": box_id},
-        "name"
+        "name",
     )
 
-    if not box_name:
-        box_name = frappe.db.get_value(
-            "Box",
-            {"name": box_id},
-            "name"
-        )
-
-    if not box_name:
-        frappe.throw(f"Box '{box_id}' does not exist.")
-
     box = frappe.get_doc("Box", box_name)
-
-    if not frappe.has_permission("Box", "read", doc=box):
-        frappe.throw(
-            "You do not have permission to view this Box.",
-            frappe.PermissionError
-        )
 
     items = []
 
@@ -188,28 +194,22 @@ def get_racking_box_item(box_id=None):
             "Item",
             row.item,
             ["item_code", "item_name", "stock_uom"],
-            as_dict=True
+            as_dict=True,
         )
 
-        if not item_details:
-            frappe.throw(
-                f"Item '{row.item}' linked to Box '{box_id}' does not exist."
-            )
+        total_qty = flt(row.qty)
+        racked_qty = flt(row.racked_qty)
 
         items.append({
             "item_code": item_details.item_code,
             "item_name": item_details.item_name,
-            "qty": row.qty,
-            "racked_qty": (
-                row.get("racked_qty")
-                if row.meta.has_field("racked_qty")
-                else None
-            ),
-            "uom": row.uom or item_details.stock_uom
+            "qty": total_qty,
+            "racked_qty": racked_qty,
+            "remaining_qty": total_qty - racked_qty,
+            "uom": row.uom or item_details.stock_uom,
         })
 
     return {"items": items}
-
 
 
 @frappe.whitelist()
@@ -226,152 +226,195 @@ def move_item_to_storage(data=None):
 
     data = data or frappe.form_dict
 
+    packing_list = data.get("packing_list")
     box_name = data.get("box")
     item_code = data.get("item")
     qty = flt(data.get("qty"))
     rack = data.get("rack")
     bin_name = data.get("bin")
-    storage_warehouse = data.get("storage_warehouse")
+    storage_warehouse = data.get("warehouse")
 
-    box = frappe.get_doc("Box", box_name)
-
-    box_item = None
-
-    for row in box.items:
-        if row.item == item_code:
-            box_item = row
-            break
-
-    # ---------------------------------------------------------
-    # Calculate Pending Quantity
-    # ---------------------------------------------------------
-
-    racked_qty = flt(box_item.racked_qty)
-    box_qty = flt(box_item.qty)
-    pending_qty = box_qty - racked_qty
-
-    if pending_qty <= 0:
-        frappe.throw(
-            _("Item {0} in Box {1} is already completely racked.")
-            .format(
-                item_code,
-                box_name,
-            )
-        )
-
-    if qty > pending_qty:
-        frappe.throw(
-            _(
-                "Racking quantity {0} cannot exceed "
-                "pending quantity {1} for Item {2}."
-            ).format(
-                qty,
-                pending_qty,
-                item_code,
-            )
-        )
-
-    # ---------------------------------------------------------
-    # Verify Box is Received
-    # ---------------------------------------------------------
-
-    packing_list = frappe.db.get_value("Box", box_name, "packing_list")
-
-    is_received = frappe.db.get_value(
-        "Packing List Box",
-        {
-            "parent": packing_list,
-            "parenttype": "Packing List",
-            "parentfield": "items",
-            "box_id": box_name,
-        },
-        "is_received",
+    # Get Material Request and warehouses
+    material_request = frappe.db.get_value(
+        "Packing List", packing_list, "material_request"
     )
 
-    if not is_received:
-        frappe.throw(
-            _("Box {0} has not been received at Bay.")
-            .format(box_name)
-        )
-
-    # ---------------------------------------------------------
-    # Find Bay Warehouse
-    # ---------------------------------------------------------
-
-    material_request = frappe.db.get_value("Packing List", packing_list, "material_request")
-
-    destination_warehouse = frappe.db.get_value("Material Request", material_request, "set_warehouse")
+    main_warehouse = frappe.db.get_value(
+        "Material Request", material_request, "set_warehouse"
+    )
 
     bay_warehouse = frappe.db.get_value(
         "Warehouse",
         {
-            "main_warehouse": destination_warehouse,
+            "main_warehouse": main_warehouse,
             "warehouse_type": "Bay",
             "is_sub_warehouse": 1,
         },
         "name",
     )
 
+    # Get Box and item
+    box = frappe.get_doc("Box", box_name)
+
+    box_item = next(
+        (row for row in box.items if row.item == item_code),
+        None,
+    )
+
+    # Check whether Box has been received
+    is_received = frappe.db.exists(
+        "Packing List Box",
+        {
+            "parent": packing_list,
+            "parenttype": "Packing List",
+            "parentfield": "items",
+            "box_id": box_name,
+            "is_received": 1,
+        },
+    )
+
+    if not is_received:
+        frappe.throw(
+            _("Box {0} has not been received at Bay.").format(box_name)
+        )
+
+    # Calculate remaining quantity
+    total_box_qty = flt(box_item.qty)
+    already_racked_qty = flt(box_item.racked_qty)
+    remaining_qty = total_box_qty - already_racked_qty
+
+    if remaining_qty <= 0 or qty > remaining_qty:
+        frappe.throw(
+            _(
+                "Cannot rack quantity {0}. Remaining quantity for "
+                "Item {1} in Box {2} is {3}."
+            ).format(qty, item_code, box_name, max(remaining_qty, 0))
+        )
+
     # Validate Storage Bin
     bin_doc = frappe.get_doc("Storage Bin", bin_name)
 
     if bin_doc.assigned_item and bin_doc.assigned_item != item_code:
         frappe.throw(
-            _(
-                "Storage Bin {0} is already assigned "
-                "to Item {1}."
-            ).format(
-                bin_name,
-                bin_doc.assigned_item,
+            _("Storage Bin {0} is assigned to Item {1}.").format(
+                bin_name, bin_doc.assigned_item
             )
         )
 
-    # Validate Rack
-    if hasattr(bin_doc, "rack"):
-        if bin_doc.rack and bin_doc.rack != rack:
-            frappe.throw(
-                _(
-                    "Storage Bin {0} belongs to Rack {1}."
-                ).format(
-                    bin_name,
-                    bin_doc.rack,
-                )
+    if bin_doc.rack and bin_doc.rack != rack:
+        frappe.throw(
+            _("Storage Bin {0} belongs to Rack {1}.").format(
+                bin_name, bin_doc.rack
             )
+        )
 
-    # ---------------------------------------------------------
-    # Create Stock Entry
-    # ---------------------------------------------------------
+    # Get or create draft Stock Entry
+    stock_entry_name = frappe.db.get_value(
+        "Stock Entry",
+        {
+            "material_request": material_request,
+            "stock_entry_type": "Material Transfer",
+            "from_warehouse": bay_warehouse,
+            "to_warehouse": storage_warehouse,
+            "docstatus": 0,
+        },
+        "name",
+    )
 
-    stock_entry = frappe.new_doc("Stock Entry")
+    if stock_entry_name:
+        stock_entry = frappe.get_doc("Stock Entry", stock_entry_name)
+    else:
+        stock_entry = frappe.new_doc("Stock Entry")
+        stock_entry.stock_entry_type = "Material Transfer"
+        stock_entry.material_request = material_request
+        stock_entry.from_warehouse = bay_warehouse
+        stock_entry.to_warehouse = storage_warehouse
 
-    stock_entry.stock_entry_type = "Material Transfer"
-    stock_entry.from_warehouse = bay_warehouse
-    stock_entry.to_warehouse = storage_warehouse
-    stock_entry.material_request = material_request
+    # Update an existing row or add a new row
+    existing_item = next(
+        (
+            row for row in stock_entry.items
+            if row.item_code == item_code
+            and row.s_warehouse == bay_warehouse
+            and row.t_warehouse == storage_warehouse
+            and row.rack == rack
+            and row.bin == bin_name
+        ),
+        None,
+    )
 
-    stock_entry_item = stock_entry.append("items", {})
-    stock_entry_item.item_code = item_code
-    stock_entry_item.qty = qty
-    stock_entry_item.s_warehouse = bay_warehouse
-    stock_entry_item.t_warehouse = storage_warehouse
-    stock_entry_item.rack = rack
-    stock_entry_item.bin = bin_name
+    if existing_item:
+        existing_item.qty = flt(existing_item.qty) + qty
+    else:
+        stock_entry.append(
+            "items",
+            {
+                "item_code": item_code,
+                "qty": qty,
+                "s_warehouse": bay_warehouse,
+                "t_warehouse": storage_warehouse,
+                "rack": rack,
+                "bin": bin_name,
+            },
+        )
 
-    stock_entry.insert()
-    stock_entry.submit()
+    if stock_entry.is_new():
+        stock_entry.insert()
+    else:
+        stock_entry.save()
 
-    # Update Racked Quantity
-    box_item.racked_qty = racked_qty + qty
+    box_item.racked_qty = already_racked_qty + qty
     box.save(ignore_permissions=True)
 
     return {
         "stock_entry": stock_entry.name,
-        "box": box_name,
-        "item": item_code,
-        "qty": qty,
+        "status": "Draft",
+        "from_warehouse": bay_warehouse,
+        "to_warehouse": storage_warehouse,
+        "total_qty": total_box_qty,
         "racked_qty": box_item.racked_qty,
-        "pending_qty": box_qty - box_item.racked_qty,
-        "rack": rack,
-        "bin": bin_name,
-        "storage_warehouse": storage_warehouse,
+        "remaining_qty": total_box_qty - flt(box_item.racked_qty),
+        "message": _("Item added to the racking Stock Entry."),
+    }
+
+
+@frappe.whitelist()
+def complete_racking(data=None):
+    """Validate and submit the draft racking Stock Entry."""
+
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    data = data or frappe.form_dict
+
+    stock_entry = frappe.get_doc("Stock Entry", data.get("stock_entry"))
+
+    if stock_entry.docstatus == 1:
+        return {
+            "stock_entry": stock_entry.name,
+            "status": "Submitted",
+            "message": _("Racking already completed."),
+        }
+
+    bay_warehouse = frappe.db.exists(
+        "Warehouse",
+        {
+            "name": stock_entry.from_warehouse,
+            "warehouse_type": "Bay",
+            "is_sub_warehouse": 1,
+        },
+    )
+
+    if not bay_warehouse:
+        frappe.throw(_("Source warehouse must be a Bay warehouse."))
+
+    if not stock_entry.items:
+        frappe.throw(_("No items found in the Stock Entry."))
+
+    stock_entry.submit()
+
+    return {
+        "stock_entry": stock_entry.name,
+        "status": "Submitted",
+        "message": _("Racking completed successfully."),
     }
