@@ -176,7 +176,7 @@ def get_racking_packing_list_details(packing_list):
 
 
 @frappe.whitelist(methods=["GET"])
-def get_racking_box_item(box_id):
+def get_racking_box_item(box_id, item_id=None):
     """Get item details from Box."""
 
     box_name = frappe.db.get_value(
@@ -187,9 +187,30 @@ def get_racking_box_item(box_id):
 
     box = frappe.get_doc("Box", box_name)
 
+    stock_entry = frappe.db.get_value(
+        "Stock Entry",
+        {
+            "material_request": frappe.db.get_value(
+                "Packing List",
+                {"name": frappe.db.get_value(
+                    "Packing List Box",
+                    {"box_id": box_id},
+                    "parent",
+                )},
+                "material_request",
+            ),
+            "stock_entry_type": "Material Transfer",
+            "docstatus": 0,
+        },
+        "name",
+    )
+
     items = []
 
     for row in box.items:
+        if item_id and row.item != item_id:
+            continue
+        
         item_details = frappe.db.get_value(
             "Item",
             row.item,
@@ -209,7 +230,10 @@ def get_racking_box_item(box_id):
             "uom": row.uom or item_details.stock_uom,
         })
 
-    return {"items": items}
+    return {
+        "stock_entry": stock_entry or None,
+        "items": items,
+    }
 
 
 @frappe.whitelist()
