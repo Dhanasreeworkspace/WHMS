@@ -231,7 +231,7 @@ def get_racking_box_item(box_id, item_id=None):
         })
 
     return {
-        "stock_entry": stock_entry or None,
+        "draft_stock_entry": stock_entry or None,
         "items": items,
     }
 
