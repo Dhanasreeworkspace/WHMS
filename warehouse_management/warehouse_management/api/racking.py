@@ -255,10 +255,10 @@ def move_item_to_storage(data=None):
     packing_list = data.get("packing_list")
     box_name = data.get("box")
     item_code = data.get("item")
-    qty = flt(data.get("qty"))
-    rack = data.get("rack")
-    bin_name = data.get("bin")
     storage_warehouse = data.get("warehouse")
+    allocations = data.get("allocations")
+
+    total_qty = sum(flt(row.get("qty")) for row in allocations)
 
     # Get Material Request and warehouses
     material_request = frappe.db.get_value(
@@ -309,30 +309,35 @@ def move_item_to_storage(data=None):
     already_racked_qty = flt(box_item.racked_qty)
     remaining_qty = total_box_qty - already_racked_qty
 
-    if remaining_qty <= 0 or qty > remaining_qty:
+    if total_qty <= 0 or total_qty > remaining_qty:
         frappe.throw(
             _(
                 "Cannot rack quantity {0}. Remaining quantity for "
                 "Item {1} in Box {2} is {3}."
-            ).format(qty, item_code, box_name, max(remaining_qty, 0))
+            ).format(total_qty, item_code, box_name, max(remaining_qty, 0))
         )
 
-    # Validate Storage Bin
-    bin_doc = frappe.get_doc("Storage Bin", bin_name)
+    # Validate all Rack and Bin allocations
+    for allocation in allocations:
+        qty = flt(allocation.get("qty"))
+        rack = allocation.get("rack")
+        bin_name = allocation.get("bin")
 
-    if bin_doc.assigned_item and bin_doc.assigned_item != item_code:
-        frappe.throw(
-            _("Storage Bin {0} is assigned to Item {1}.").format(
-                bin_name, bin_doc.assigned_item
+        bin_doc = frappe.get_doc("Storage Bin", bin_name)
+
+        if bin_doc.assigned_item and bin_doc.assigned_item != item_code:
+            frappe.throw(
+                _("Storage Bin {0} is assigned to Item {1}.").format(
+                    bin_name, bin_doc.assigned_item
+                )
             )
-        )
 
-    if bin_doc.rack and bin_doc.rack != rack:
-        frappe.throw(
-            _("Storage Bin {0} belongs to Rack {1}.").format(
-                bin_name, bin_doc.rack
+        if bin_doc.rack and bin_doc.rack != rack:
+            frappe.throw(
+                _("Storage Bin {0} belongs to Rack {1}.").format(
+                    bin_name, bin_doc.rack
+                )
             )
-        )
 
     # Get or create draft Stock Entry
     stock_entry_name = frappe.db.get_value(
@@ -356,40 +361,45 @@ def move_item_to_storage(data=None):
         stock_entry.from_warehouse = bay_warehouse
         stock_entry.to_warehouse = storage_warehouse
 
-    # Update an existing row or add a new row
-    existing_item = next(
-        (
-            row for row in stock_entry.items
-            if row.item_code == item_code
-            and row.s_warehouse == bay_warehouse
-            and row.t_warehouse == storage_warehouse
-            and row.rack == rack
-            and row.bin == bin_name
-        ),
-        None,
-    )
+    # Add each Rack and Bin allocation
+    for allocation in allocations:
+        qty = flt(allocation.get("qty"))
+        rack = allocation.get("rack")
+        bin_name = allocation.get("bin")
 
-    if existing_item:
-        existing_item.qty = flt(existing_item.qty) + qty
-    else:
-        stock_entry.append(
-            "items",
-            {
-                "item_code": item_code,
-                "qty": qty,
-                "s_warehouse": bay_warehouse,
-                "t_warehouse": storage_warehouse,
-                "rack": rack,
-                "bin": bin_name,
-            },
+        existing_item = next(
+            (
+                row for row in stock_entry.items
+                if row.item_code == item_code
+                and row.s_warehouse == bay_warehouse
+                and row.t_warehouse == storage_warehouse
+                and row.rack == rack
+                and row.bin == bin_name
+            ),
+            None,
         )
+
+        if existing_item:
+            existing_item.qty = flt(existing_item.qty) + qty
+        else:
+            stock_entry.append(
+                "items",
+                {
+                    "item_code": item_code,
+                    "qty": qty,
+                    "s_warehouse": bay_warehouse,
+                    "t_warehouse": storage_warehouse,
+                    "rack": rack,
+                    "bin": bin_name,
+                },
+            )
 
     if stock_entry.is_new():
         stock_entry.insert()
     else:
         stock_entry.save()
 
-    box_item.racked_qty = already_racked_qty + qty
+    box_item.racked_qty = already_racked_qty + total_qty
     box.save(ignore_permissions=True)
 
     return {
@@ -436,6 +446,44 @@ def complete_racking(data=None):
 
     if not stock_entry.items:
         frappe.throw(_("No items found in the Stock Entry."))
+
+    material_request = stock_entry.material_request
+
+    packing_lists = frappe.get_all(
+        "Packing List",
+        filters={"material_request": material_request},
+        pluck="name",
+    )
+
+    for packing_list in packing_lists:
+        boxes = frappe.get_all(
+            "Packing List Box",
+            filters={"parent": packing_list, "is_received": 1},
+            pluck="box_id",
+        )
+
+        for box_id in boxes:
+            box_name = frappe.db.get_value(
+                "Box",
+                {"box_id": box_id},
+                "name",
+            )
+
+            if not box_name:
+                continue
+
+            box = frappe.get_doc("Box", box_name)
+
+            for row in box.items:
+                if flt(row.racked_qty) < flt(row.qty):
+                    frappe.throw(
+                        _("Cannot complete racking. Item {0} in Box {1} is not fully racked. Required: {2}, Racked: {3}.").format(
+                            row.item,
+                            box_id,
+                            row.qty,
+                            row.racked_qty,
+                        )
+                    )
 
     stock_entry.submit()
 
