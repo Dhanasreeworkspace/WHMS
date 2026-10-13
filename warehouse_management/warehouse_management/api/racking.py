@@ -211,29 +211,20 @@ def get_racking_box_item(box_id, item_id=None):
         if item_id and row.item != item_id:
             continue
         
-        item_details = frappe.db.get_value(
-            "Item",
-            row.item,
-            ["item_code", "item_name", "stock_uom"],
-            as_dict=True,
-        )
-        item_details.barcode = frappe.db.get_value(
-             "Item Barcode",
-               {"parent": row.item, "parenttype": "Item"},
-               "barcode",
-)
+        item = frappe.get_doc("Item", row.item)
+#       
        
         total_qty = flt(row.qty)
         racked_qty = flt(row.racked_qty)
 
         items.append({
-            "item_code": item_details.item_code,
-            "item_name": item_details.item_name,
-            "barcode": item_details.barcode,
+            "item_code": item.item_code,
+            "item_name": item.item_name,
+            "barcode": item.barcodes[0].barcode if item.barcodes else None,
             "qty": total_qty,
             "racked_qty": racked_qty,
             "remaining_qty": total_qty - racked_qty,
-            "uom": row.uom or item_details.stock_uom,
+            "uom": row.uom or item.stock_uom,
         })
 
     return {
