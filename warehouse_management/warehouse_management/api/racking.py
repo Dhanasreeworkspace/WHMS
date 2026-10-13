@@ -176,7 +176,7 @@ def get_racking_packing_list_details(packing_list):
 
 
 @frappe.whitelist(methods=["GET"])
-def get_racking_box_item(box_id, item_id=None):
+def get_racking_box_item(box_id, item_id=None,barcode=None):
     """Get item details from Box."""
 
     box_name = frappe.db.get_value(
@@ -208,10 +208,12 @@ def get_racking_box_item(box_id, item_id=None):
     items = []
 
     for row in box.items:
-        if item_id and row.item != item_id:
-            continue
-        
         item = frappe.get_doc("Item", row.item)
+
+        if (item_id and row.item != item_id) or (
+        barcode and not any(b.barcode == barcode for b in item.barcodes)
+    ):
+             continue
 
        
         total_qty = flt(row.qty)
