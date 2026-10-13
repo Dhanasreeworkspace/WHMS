@@ -217,13 +217,19 @@ def get_racking_box_item(box_id, item_id=None):
             ["item_code", "item_name", "stock_uom"],
             as_dict=True,
         )
-
+        item_details.barcode = frappe.db.get_value(
+             "Item Barcode",
+               {"parent": row.item, "parenttype": "Item"},
+               "barcode",
+)
+       
         total_qty = flt(row.qty)
         racked_qty = flt(row.racked_qty)
 
         items.append({
             "item_code": item_details.item_code,
             "item_name": item_details.item_name,
+            "barcode": item_details.barcode,
             "qty": total_qty,
             "racked_qty": racked_qty,
             "remaining_qty": total_qty - racked_qty,
