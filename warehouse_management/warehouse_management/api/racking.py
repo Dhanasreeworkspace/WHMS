@@ -212,7 +212,7 @@ def get_racking_box_item(box_id, item_id=None):
             continue
         
         item = frappe.get_doc("Item", row.item)
-#       
+
        
         total_qty = flt(row.qty)
         racked_qty = flt(row.racked_qty)
