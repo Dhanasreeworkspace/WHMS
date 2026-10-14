@@ -126,6 +126,17 @@ def get_racking_packing_list_details(packing_list):
         "name",
     )
 
+    stock_entry = frappe.db.get_value(
+        "Stock Entry",
+        {
+            "material_request": material_request,
+            "stock_entry_type": "Material Transfer",
+            "from_warehouse": bay_warehouse,
+            "docstatus": 0,
+        },
+        "name",
+    )
+
     # Check whether racking Stock Entry is submitted
     submitted_stock_entry = frappe.db.exists(
         "Stock Entry",
@@ -139,6 +150,7 @@ def get_racking_packing_list_details(packing_list):
 
     if submitted_stock_entry:
         return {
+            "draft_stock_entry": None,
             "total_box_count": 0,
             "items": [],
         }
@@ -170,9 +182,11 @@ def get_racking_packing_list_details(packing_list):
         })
 
     return {
+        "draft_stock_entry": stock_entry or None,
         "total_box_count": len(result),
         "items": result,
     }
+
 
 @frappe.whitelist(methods=["GET"])
 def get_racking_box_item(box_id, item_id=None, barcode=None):
@@ -185,26 +199,6 @@ def get_racking_box_item(box_id, item_id=None, barcode=None):
     )
 
     box = frappe.get_doc("Box", box_name)
-
-    stock_entry = frappe.db.get_value(
-        "Stock Entry",
-        {
-            "material_request": frappe.db.get_value(
-                "Packing List",
-                {
-                    "name": frappe.db.get_value(
-                        "Packing List Box",
-                        {"box_id": box_id},
-                        "parent",
-                    )
-                },
-                "material_request",
-            ),
-            "stock_entry_type": "Material Transfer",
-            "docstatus": 0,
-        },
-        "name",
-    )
 
     items = []
 
@@ -232,10 +226,7 @@ def get_racking_box_item(box_id, item_id=None, barcode=None):
             "uom": row.uom or item.stock_uom,
         })
 
-    return {
-        "draft_stock_entry": stock_entry or None,
-        "items": items,
-    }
+    return {"items": items}
 
 
 @frappe.whitelist()
