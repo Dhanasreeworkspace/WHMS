@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 
-from warehouse_management.utils import get_managed_warehouses, get_manager_warehouse
+from warehouse_management.utils import get_sub_warehouses, get_main_warehouse
 from warehouse_management.events.stock_availability import get_available_qty_for_items
 
 
@@ -29,7 +29,7 @@ def notify_source_warehouse_manager(doc, method=None):
     }
 
     manager_warehouses = {
-        get_manager_warehouse(warehouse)
+        get_main_warehouse(warehouse)
         for warehouse in source_warehouses
     }
 
@@ -65,7 +65,7 @@ def notify_target_warehouse_manager(doc, method=None):
     }
 
     manager_warehouses = {
-        get_manager_warehouse(warehouse)
+        get_main_warehouse(warehouse)
         for warehouse in target_warehouses
     }
 
@@ -177,7 +177,7 @@ def validate_warehouse_manager(doc, method=None):
         )
 
     managed_warehouses = set(
-        get_managed_warehouses(employee.active_warehouse)
+        get_sub_warehouses(employee.active_warehouse)
     )
 
     source_warehouses = {
@@ -213,7 +213,7 @@ def get_permission_query_conditions(user=None):
     if not employee.active_warehouse:
         return "1=0"
 
-    managed_warehouses = get_managed_warehouses(
+    managed_warehouses = get_sub_warehouses(
         employee.active_warehouse,
         include_sub_warehouses=True,
     )

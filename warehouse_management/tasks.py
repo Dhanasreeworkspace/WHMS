@@ -2,7 +2,7 @@ import frappe
 from frappe.query_builder import DocType
 from pypika.functions import Coalesce
 
-from warehouse_management.utils import get_manager_warehouse
+from warehouse_management.utils import get_main_warehouse
 
 
 def check_critical_stock():
@@ -42,7 +42,7 @@ def check_critical_stock():
     manager_data = {}
 
     for row in rows:
-        manager_warehouse = get_manager_warehouse(row["warehouse"])
+        manager_warehouse = get_main_warehouse(row["warehouse"])
 
         if not manager_warehouse:
             continue

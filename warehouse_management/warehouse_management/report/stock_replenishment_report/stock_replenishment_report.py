@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import parse_json
 from frappe.query_builder import DocType
 
-from warehouse_management.utils import get_managed_warehouses
+from warehouse_management.utils import get_sub_warehouses
 
 
 def execute(filters=None):
@@ -121,7 +121,7 @@ def get_data(filters):
             if not employee.active_warehouse:
                 return [], []
 
-            allowed_warehouses = get_managed_warehouses(employee.active_warehouse)
+            allowed_warehouses = get_sub_warehouses(employee.active_warehouse)
 
             if not allowed_warehouses:
                 return [], []
@@ -133,7 +133,7 @@ def get_data(filters):
         return [], []
 
     if filters.get("warehouse"):
-        warehouses = get_managed_warehouses(filters["warehouse"])
+        warehouses = get_sub_warehouses(filters["warehouse"])
 
         if not warehouses:
             return [], []
@@ -293,7 +293,7 @@ def get_warehouse_stock(item_codes, warehouses):
     warehouse_groups = {}
 
     for warehouse in warehouses:
-        managed_warehouses = get_managed_warehouses(warehouse)
+        managed_warehouses = get_sub_warehouses(warehouse)
 
         if managed_warehouses:
             warehouse_groups[warehouse] = managed_warehouses
