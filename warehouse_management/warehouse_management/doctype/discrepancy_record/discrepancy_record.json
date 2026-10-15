@@ -127,21 +127,22 @@
    "label": "Remarks"
   },
   {
-   "fieldname": "photo",
-   "fieldtype": "Attach",
-   "label": "Photo"
-  },
-  {
    "fieldname": "box",
    "fieldtype": "Link",
    "label": "Box",
    "options": "Box"
+  },
+  {
+   "fieldname": "photo",
+   "fieldtype": "Data",
+   "label": "Image URL",
+   "options": "URL"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-15 14:25:19.539354",
+ "modified": "2026-10-15 16:46:26.441941",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Discrepancy Record",
