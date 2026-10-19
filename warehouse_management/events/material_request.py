@@ -1,5 +1,7 @@
+import json
 import frappe
 from frappe import _
+from frappe.utils import cint
 
 from warehouse_management.utils import get_sub_warehouses, get_main_warehouse
 from warehouse_management.events.stock_availability import get_available_qty_for_items
@@ -328,3 +330,105 @@ def get_conflicting_pending_mrs(material_request):
     }, as_dict=True)
 
     return conflicts
+
+
+@frappe.whitelist()
+def get_picker_assignment_data(material_request):
+    """Get item rows for a submitted Material Request."""
+
+    mr = frappe.get_doc("Material Request", material_request)
+
+    items = []
+
+    for item in mr.items:
+        items.append({
+            "name": item.name,
+            "item_code": item.item_code,
+            "item_name": item.item_name,
+            "qty": item.qty,
+            "assigned_picker": item.get("assigned_picker"),
+        })
+
+    return {"items": items}
+
+
+@frappe.whitelist()
+def get_picker_users(doctype, txt, searchfield, start, page_len, filters=None):
+    """Return enabled users who have the Picker role."""
+
+    picker_users = frappe.get_all(
+        "Has Role",
+        filters={"role": "Picker"},
+        fields=["parent"],
+        distinct=True,
+    )
+
+    user_names = [row.parent for row in picker_users]
+
+    if not user_names:
+        return []
+
+    users = frappe.get_all(
+        "User",
+        filters={
+            "name": ["in", user_names],
+            "enabled": 1,
+        },
+        or_filters=[
+            ["User", "name", "like", f"%{txt}%"],
+            ["User", "full_name", "like", f"%{txt}%"],
+        ],
+        fields=["name", "full_name"],
+        order_by="full_name asc",
+        start=cint(start),
+        page_length=cint(page_len),
+    )
+
+    return [
+        (user.name, user.full_name)
+        for user in users
+        if user.name != "Guest"
+    ]
+
+
+@frappe.whitelist()
+def assign_picker_to_items(material_request, picker, items):
+    """Assign a picker to selected Material Request item rows."""
+
+    mr = frappe.get_doc("Material Request", material_request)
+
+    if isinstance(items, str):
+        items = json.loads(items)
+
+    if not isinstance(items, list) or not items:
+        frappe.throw(_("Please select at least one item."))
+
+    # Verify the selected user has the Picker role.
+    if "Picker" not in frappe.get_roles(picker):
+        frappe.throw(
+            _("Selected user does not have the Picker role.")
+        )
+
+    selected_names = set(items)
+    valid_names = {row.name for row in mr.items}
+
+    if not selected_names.issubset(valid_names):
+        frappe.throw(
+            _("One or more selected items do not belong to this Material Request.")
+        )
+
+    # Update the assigned picker field.
+    for item_name in selected_names:
+        frappe.db.set_value(
+            "Material Request Item",
+            item_name,
+            "assigned_picker",
+            picker,
+            update_modified=False,
+        )
+
+    return {
+        "success": True,
+        "picker": picker,
+        "assigned_count": len(selected_names),
+    }
