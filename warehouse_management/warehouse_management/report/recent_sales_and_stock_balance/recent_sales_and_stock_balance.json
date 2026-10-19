@@ -48,6 +48,12 @@
   },
   {
    "role": "Desk User"
+  },
+  {
+   "role": "System Manager"
+},
+  {
+    "role": "Warehouse Manager"
   }
  ],
  "snapshot_report": 0,
