@@ -256,6 +256,10 @@ def move_item_to_storage(data=None):
         "Packing List", packing_list, "material_request"
     )
 
+    pick_list = frappe.db.get_value(
+        "Packing List", packing_list, "pick_list"
+    )
+
     main_warehouse = frappe.db.get_value(
         "Material Request", material_request, "set_warehouse"
     )
@@ -349,6 +353,7 @@ def move_item_to_storage(data=None):
         stock_entry = frappe.new_doc("Stock Entry")
         stock_entry.stock_entry_type = "Material Transfer"
         stock_entry.material_request = material_request
+        stock_entry.pick_list = pick_list
         stock_entry.from_warehouse = bay_warehouse
         stock_entry.to_warehouse = storage_warehouse
 
