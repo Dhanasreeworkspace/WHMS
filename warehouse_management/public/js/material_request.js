@@ -123,9 +123,29 @@ function open_item_selection_dialog(frm) {
 
                 fields: [
                     {
+                        fieldname: "filter_section",
+                        fieldtype: "Section Break",
+                    },
+                    {
                         fieldname: "item_search",
                         fieldtype: "Data",
+                        label: __("Search Items"),
                         placeholder: __("Search by Item Code or Item Name"),
+                    },
+                    {
+                        fieldname: "brand_column",
+                        fieldtype: "Column Break",
+                    },
+                    {
+                        fieldname: "brand_filter",
+                        fieldtype: "Link",
+                        label: __("Brand"),
+                        options: "Brand",
+                        placeholder: __("Search Brand"),
+                    },
+                    {
+                        fieldname: "table_section",
+                        fieldtype: "Section Break",
                     },
                     {
                         fieldname: "items_html",
@@ -160,12 +180,15 @@ function open_item_selection_dialog(frm) {
 
             let rows_html = "";
 
-            items.forEach(item => {
+            items.forEach((item, index) => {
+                const serial_no = item.serial_no || index + 1;
+
                 rows_html += `
                     <tr
                         class="picker-item-row"
                         data-item-code="${escape_html(item.item_code || "")}"
                         data-item-name="${escape_html(item.item_name || "")}"
+                        data-brand="${escape_html(item.brand || "")}"
                     >
                         <td class="text-center">
                             <input
@@ -175,12 +198,20 @@ function open_item_selection_dialog(frm) {
                             >
                         </td>
 
+                        <td class="text-center">
+                            ${serial_no}
+                        </td>
+
                         <td>
                             ${escape_html(item.item_code || "")}
                         </td>
 
                         <td>
                             ${escape_html(item.item_name || "")}
+                        </td>
+
+                        <td>
+                            ${escape_html(item.brand || "")}
                         </td>
 
                         <td>
@@ -195,17 +226,19 @@ function open_item_selection_dialog(frm) {
             });
 
             const html = `
-                <div class="picker-items-container">
-
+                <div class="picker-items-container" style="width: 100%;">
                     <div style="
                         max-height: 450px;
                         overflow-y: auto;
+                        overflow-x: auto;
+                        width: 100%;
                         border: 1px solid var(--border-color);
                         border-radius: 4px;
                     ">
-                        <table class="table table-bordered table-hover"
-                               style="margin-bottom: 0;">
-
+                        <table
+                            class="table table-bordered table-hover"
+                            style="margin-bottom: 0; width: 100%;"
+                        >
                             <thead style="
                                 position: sticky;
                                 top: 0;
@@ -220,9 +253,10 @@ function open_item_selection_dialog(frm) {
                                             aria-label="Select all visible items"
                                         >
                                     </th>
-
+                                    <th style="width: 45px; text-align: center;"></th>
                                     <th>${__("Item Code")}</th>
                                     <th>${__("Item Name")}</th>
+                                    <th>${__("Brand")}</th>
                                     <th>${__("Qty")}</th>
                                     <th>${__("Current Picker")}</th>
                                 </tr>
@@ -231,21 +265,55 @@ function open_item_selection_dialog(frm) {
                             <tbody>
                                 ${rows_html}
                             </tbody>
-
                         </table>
                     </div>
 
-                    <div class="selected-items-count"
-                         style="margin-top: 12px;">
+                    <div class="selected-items-count" style="margin-top: 12px;">
                         0 ${__("item(s) selected")}
                     </div>
-
                 </div>
             `;
 
             const wrapper = dialog.fields_dict.items_html.$wrapper;
 
             wrapper.html(html);
+
+            // Apply search and brand filters together.
+            function apply_filters() {
+                const search_text = (
+                    dialog.fields_dict.item_search.$input.val() || ""
+                ).toLowerCase().trim();
+
+                const selected_brand =
+                    dialog.fields_dict.brand_filter.get_value() || "";
+
+                wrapper.find(".picker-item-row").each(function () {
+                    const row = $(this);
+
+                    const item_code = String(
+                        row.attr("data-item-code") || ""
+                    ).toLowerCase();
+
+                    const item_name = String(
+                        row.attr("data-item-name") || ""
+                    ).toLowerCase();
+
+                    const brand = String(
+                        row.attr("data-brand") || ""
+                    );
+
+                    const matches_search =
+                        item_code.includes(search_text) ||
+                        item_name.includes(search_text);
+
+                    const matches_brand =
+                        !selected_brand || brand === selected_brand;
+
+                    row.toggle(matches_search && matches_brand);
+                });
+
+                update_selected_count();
+            }
 
             function update_selected_count() {
                 wrapper.find(".selected-items-count").text(
@@ -314,29 +382,20 @@ function open_item_selection_dialog(frm) {
             // Search by Item Code or Item Name.
             dialog.fields_dict.item_search.$input.on(
                 "input",
+                apply_filters
+            );
+
+            // Filter when a Brand is selected.
+            dialog.fields_dict.brand_filter.$input.on(
+                "awesomplete-selectcomplete change input",
                 function () {
-                    const search_text = (
-                        $(this).val() || ""
-                    ).toLowerCase().trim();
-
-                    wrapper.find(".picker-item-row").each(function () {
-                        const item_code = String(
-                            $(this).attr("data-item-code") || ""
-                        ).toLowerCase();
-
-                        const item_name = String(
-                            $(this).attr("data-item-name") || ""
-                        ).toLowerCase();
-
-                        const matches =
-                            item_code.includes(search_text) ||
-                            item_name.includes(search_text);
-
-                        $(this).toggle(matches);
-                    });
-
-                    update_selected_count();
+                    apply_filters();
                 }
+            );
+
+            dialog.fields_dict.brand_filter.$input.on(
+                "change",
+                apply_filters
             );
 
             dialog.show();

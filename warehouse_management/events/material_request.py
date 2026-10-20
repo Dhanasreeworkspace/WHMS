@@ -300,6 +300,7 @@ def update_stock_available_at_source(doc, method=None):
             else 0
         )
 
+
 @frappe.whitelist()
 def get_conflicting_pending_mrs(material_request):
     mr = frappe.get_doc("Material Request", material_request)
@@ -340,11 +341,15 @@ def get_picker_assignment_data(material_request):
 
     items = []
 
-    for item in mr.items:
+    for idx, item in enumerate(mr.items, start=1):
+        brand = frappe.db.get_value("Item", item.item_code, "brand")
+
         items.append({
             "name": item.name,
+            "serial_no": idx,
             "item_code": item.item_code,
             "item_name": item.item_name,
+            "brand": brand,
             "qty": item.qty,
             "assigned_picker": item.get("assigned_picker"),
         })
