@@ -14,7 +14,7 @@ fixtures = [
 		"filters": [
 			["dt", "in", ["Purchase Receipt Item", "Stock Entry Detail", "Material Request Item"]],
 			["fieldname", "in", [
-				"rack", "bin", "date_of_assignment", "expiry_date", "stock_available_at_source"
+				"rack", "bin", "date_of_assignment", "expiry_date", "stock_available_at_source", "assigned_picker"
 			]]
 		]
 	},
