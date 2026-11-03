@@ -141,36 +141,49 @@ def get_material_request_stock(mr_id, brand=None):
 def get_item_storage_bins(item_code, warehouse):
     item = frappe.get_doc("Item", item_code)
 
-    bins = frappe.get_all(
-        "Storage Bin",
+    bin_items = frappe.get_all(
+        "Storage Bin Item",
         filters={
-            "assigned_item": item_code,
-            "warehouse": warehouse,
-            "status": "Occupied",
+            "item": item_code,
+            "parenttype": "Storage Bin",
+            "parentfield": "items",
+            "quantity": [">", 0],
         },
-        fields=[
-            "name",
-            "rack",
-            "quantity",
-            "uom",
-        ],
-        order_by="name asc",
+        fields=["parent", "quantity", "uom"],
+        order_by="parent asc",
     )
+
+    if not bin_items:
+        bins = []
+    else:
+        storage_bins = frappe.get_all(
+            "Storage Bin",
+            filters={
+                "name": ["in", list({row.parent for row in bin_items})],
+                "warehouse": warehouse,
+            },
+            fields=["name", "rack"],
+        )
+
+        storage_bin_map = {row.name: row for row in storage_bins}
+
+        bins = [
+            {
+                "bin": row.parent,
+                "rack": storage_bin_map[row.parent].rack,
+                "qty": row.quantity,
+                "uom": row.uom,
+            }
+            for row in bin_items
+            if row.parent in storage_bin_map
+        ]
 
     return {
         "item_code": item_code,
         "item_name": item.item_name,
         "barcode": item.barcodes[0].barcode if item.barcodes else None,
         "warehouse": warehouse,
-        "storage_bins": [
-            {
-                "bin": row.name,
-                "rack": row.rack,
-                "qty": row.quantity,
-                "uom": row.uom,
-            }
-            for row in bins
-        ],
+        "storage_bins": bins,
     }
 
 
