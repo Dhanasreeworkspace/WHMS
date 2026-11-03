@@ -230,11 +230,16 @@ def create_pick_list_from_bins(data=None):
             bin_name = bin_row.get("bin")
             qty = flt(bin_row.get("qty"))
 
-            requested_bins[bin_name] = {
-                "item_code": item_code,
-                "qty": qty,
-                "uom": bin_row.get("uom") or mr_items[item_code].uom,
-            }
+            bin_key = (bin_name, item_code)
+
+            if bin_key not in requested_bins:
+                requested_bins[bin_key] = {
+                    "item_code": item_code,
+                    "qty": 0,
+                    "uom": bin_row.get("uom") or mr_items[item_code].uom,
+                }
+
+            requested_bins[bin_key]["qty"] += qty
 
             current_qty[item_code] = (
                 current_qty.get(item_code, 0) + qty
@@ -255,15 +260,44 @@ def create_pick_list_from_bins(data=None):
                 )
             )
 
+    # Get unique Storage Bin names from requested bin/item pairs.
+    bin_names = list({
+        bin_name
+        for bin_name, item_code in requested_bins
+    })
+
+    # Fetch Storage Bin parent documents.
     storage_bins = frappe.get_all(
         "Storage Bin",
-        filters={"name": ["in", list(requested_bins)]},
-        fields=["name", "rack", "assigned_item", "quantity", "status"],
+        filters={"name": ["in", bin_names]},
+        fields=["name", "rack", "warehouse"],
     )
 
-    storage_bin_map = {row.name: row for row in storage_bins}
+    storage_bin_map = {
+        row.name: frappe.get_doc("Storage Bin", row.name)
+        for row in storage_bins
+    }
 
-    for bin_name, request in requested_bins.items():
+    # Fetch child rows using parent (Storage Bin name).
+    bin_items = frappe.get_all(
+        "Storage Bin Item",
+        filters={
+            "parent": ["in", bin_names],
+            "parenttype": "Storage Bin",
+            "parentfield": "items",
+        },
+        fields=["parent", "item", "quantity", "uom"],
+    )
+
+    # Map using Storage Bin + Item.
+    bin_item_map = {
+        (row.parent, row.item): row
+        for row in bin_items
+    }
+
+    # Validate requested quantities against the matching child row.
+    for (bin_name, item_code), request in requested_bins.items():
+
         storage_bin = storage_bin_map.get(bin_name)
 
         if not storage_bin:
@@ -271,26 +305,24 @@ def create_pick_list_from_bins(data=None):
                 _("Storage Bin {0} does not exist.").format(bin_name)
             )
 
-        if storage_bin.assigned_item != request["item_code"]:
+        item_row = bin_item_map.get((bin_name, item_code))
+
+        if not item_row:
             frappe.throw(
-                _("Storage Bin {0} is not assigned to Item {1}.")
-                .format(bin_name, request["item_code"])
+                _("Item {0} is not available in Storage Bin {1}.")
+                .format(item_code, bin_name)
             )
 
-        if storage_bin.status != "Occupied":
-            frappe.throw(
-                _("Storage Bin {0} is not occupied.").format(bin_name)
-            )
-
-        if request["qty"] > flt(storage_bin.quantity):
+        if request["qty"] > flt(item_row.quantity):
             frappe.throw(
                 _(
-                    "Insufficient quantity in Storage Bin {0}. "
-                    "Available: {1}, Requested: {2}"
+                    "Insufficient quantity of Item {0} in Storage Bin {1}. "
+                    "Available: {2}, Requested: {3}"
                 ).format(
+                    item_code,
                     bin_name,
-                    storage_bin.quantity,
-                    request["qty"],
+                    item_row.quantity,
+                    request["qty"]
                 )
             )
 
@@ -334,12 +366,13 @@ def create_pick_list_from_bins(data=None):
 
     bin_assignment_names = []
 
-    for bin_name, request in requested_bins.items():
+    for (bin_name, item_code), request in requested_bins.items():
+
         storage_bin = storage_bin_map[bin_name]
 
         bin_assignment = frappe.get_doc({
             "doctype": "Bin Assignment",
-            "item": request["item_code"],
+            "item": item_code,
             "uom": request["uom"],
             "rack": storage_bin.rack,
             "bin": bin_name,
