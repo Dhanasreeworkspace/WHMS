@@ -8,15 +8,16 @@
  "field_order": [
   "rack",
   "item",
-  "uom",
+  "quantity",
   "doa",
   "assignment_type",
   "naming_series",
   "column_break_ziad",
   "bin",
   "item_name",
-  "quantity",
+  "uom",
   "expiry_date",
+  "replaced_bin_assignment",
   "references_section",
   "purchase_receipt",
   "batch_no",
@@ -90,15 +91,14 @@
   {
    "fieldname": "uom",
    "fieldtype": "Link",
-   "label": "UoM",
+   "label": "UOM",
    "options": "UOM"
   },
   {
    "fetch_from": "item.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Item Name",
-   "read_only": 1
+   "label": "Item Name"
   },
   {
    "fieldname": "naming_series",
@@ -136,12 +136,19 @@
    "fieldtype": "Link",
    "label": "Pick List",
    "options": "Pick List"
+  },
+  {
+   "fieldname": "replaced_bin_assignment",
+   "fieldtype": "Link",
+   "label": "Replaced Bin Assignment",
+   "options": "Bin Assignment",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-15 10:52:49.571701",
+ "modified": "2026-11-02 15:29:40.540856",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Bin Assignment",

@@ -195,7 +195,8 @@ permission_query_conditions = {
 
 doc_events = {
 	"Purchase Receipt": {
-		"on_submit": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.create_bin_assignments_on_purchase_receipt_submit"
+		"on_submit": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.create_bin_assignments_on_purchase_receipt_submit",
+        "on_cancel": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.delete_bin_assignments_on_purchase_receipt_cancel",
 	},
 	"Material Request": {
 		"validate": "warehouse_management.events.material_request.validate_warehouse_manager",
