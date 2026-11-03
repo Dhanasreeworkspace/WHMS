@@ -8,9 +8,6 @@
  "field_order": [
   "rack_code",
   "warehouse",
-  "total_cells",
-  "occupied_cells",
-  "available_cells",
   "status"
  ],
  "fields": [
@@ -29,24 +26,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "total_cells",
-   "fieldtype": "Int",
-   "label": "Total Cells"
-  },
-  {
-   "default": "0",
-   "fieldname": "occupied_cells",
-   "fieldtype": "Int",
-   "label": "Occupied Cells",
-   "read_only": 1
-  },
-  {
-   "fieldname": "available_cells",
-   "fieldtype": "Int",
-   "label": "Available Cells",
-   "read_only": 1
-  },
-  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -56,7 +35,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-11 12:28:37.894836",
+ "modified": "2026-11-02 13:01:17.436175",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Rack",

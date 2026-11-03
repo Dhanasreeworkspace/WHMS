@@ -6,7 +6,4 @@ from frappe.model.document import Document
 
 
 class Rack(Document):
-	def validate(self):
-		self.available_cells = (
-		self.total_cells - self.occupied_cells
-	)
+	pass
