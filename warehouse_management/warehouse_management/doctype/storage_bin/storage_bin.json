@@ -7,19 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "bin_id",
-  "cells_occupied",
+  "rack",
   "status",
   "column_break_bsdu",
-  "rack",
   "warehouse",
-  "references_section",
-  "bin_assignment_record",
-  "assigned_item",
-  "assigned_on",
-  "column_break_ilbz",
-  "item_name",
-  "uom",
-  "quantity"
+  "section_break_psku",
+  "items"
  ],
  "fields": [
   {
@@ -46,12 +39,6 @@
    "reqd": 1
   },
   {
-   "default": "1",
-   "fieldname": "cells_occupied",
-   "fieldtype": "Int",
-   "label": "Cells Occupied"
-  },
-  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -62,57 +49,20 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval: doc.status == \"Occupied\";",
-   "fieldname": "references_section",
-   "fieldtype": "Section Break",
-   "label": "References"
+   "fieldname": "section_break_psku",
+   "fieldtype": "Section Break"
   },
   {
-   "fieldname": "bin_assignment_record",
-   "fieldtype": "Data",
-   "label": "Bin Assignment Record"
-  },
-  {
-   "fieldname": "assigned_item",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Assigned Item",
-   "options": "Item",
-   "read_only": 1
-  },
-  {
-   "fieldname": "assigned_on",
-   "fieldtype": "Date",
-   "label": "Assigned On",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_ilbz",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "item_name",
-   "fieldtype": "Data",
-   "label": "Item Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "uom",
-   "fieldtype": "Link",
-   "label": "UoM",
-   "options": "UOM"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Float",
-   "label": "Quantity",
-   "read_only": 1
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Storage Bin Item"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-15 10:53:28.615380",
+ "modified": "2026-11-03 14:40:34.575844",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Storage Bin",
