@@ -312,7 +312,7 @@ def move_item_to_storage(data=None):
             ).format(total_qty, item_code, box_name, max(remaining_qty, 0))
         )
 
-    # Validate all Rack and Bin allocations
+    # Validate all Rack and Bin allocations.
     for allocation in allocations:
         qty = flt(allocation.get("qty"))
         rack = allocation.get("rack")
@@ -320,17 +320,17 @@ def move_item_to_storage(data=None):
 
         bin_doc = frappe.get_doc("Storage Bin", bin_name)
 
-        if bin_doc.assigned_item and bin_doc.assigned_item != item_code:
+        if bin_doc.rack != rack:
             frappe.throw(
-                _("Storage Bin {0} is assigned to Item {1}.").format(
-                    bin_name, bin_doc.assigned_item
+                _("Storage Bin {0} does not belong to Rack {1}.").format(
+                    bin_name, rack
                 )
             )
 
-        if bin_doc.rack and bin_doc.rack != rack:
+        if bin_doc.warehouse != storage_warehouse:
             frappe.throw(
-                _("Storage Bin {0} belongs to Rack {1}.").format(
-                    bin_name, bin_doc.rack
+                _("Storage Bin {0} does not belong to Warehouse {1}.").format(
+                    bin_name, storage_warehouse
                 )
             )
 
