@@ -1,7 +1,6 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:bin_id",
  "creation": "2026-05-11 11:38:30.265666",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -62,11 +61,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-03 14:40:34.575844",
+ "modified": "2026-11-04 10:13:45.981024",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Storage Bin",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
