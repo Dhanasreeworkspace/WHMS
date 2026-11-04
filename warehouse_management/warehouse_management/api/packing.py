@@ -105,9 +105,38 @@ def get_pick_list_items(pick_list):
         order_by="idx asc",
     )
 
+    item_map = {}
+
+    for row in items:
+        item_code = row.item_code
+
+        if item_code not in item_map:
+            item_map[item_code] = {
+                "item_code": item_code,
+                "item_name": row.item_name,
+                "qty": 0,
+                "picked_qty": 0,
+                "packed_qty": flt(row.packed_qty),
+                "uom": row.uom,
+                "pick_list_items": [],
+            }
+
+        item_map[item_code]["qty"] += flt(row.qty)
+
+        # Aggregate picked quantity from all Rack/Bin rows
+        item_map[item_code]["picked_qty"] += flt(row.picked_qty)
+
+        # Retain packed quantity without adding duplicate values
+        item_map[item_code]["packed_qty"] = max(
+            item_map[item_code]["packed_qty"],
+            flt(row.packed_qty),
+        )
+
+        item_map[item_code]["pick_list_items"].append(row.name)
+
     return {
         "packing_list": packing_list,
-        "data": items,
+        "data": list(item_map.values()),
     }
 
 
@@ -277,14 +306,23 @@ def complete_packing_list(data=None):
                     packing_qty.get(item.item, 0) + flt(item.qty)
                 )
 
-        for row in stock_entry.items:
-            qty = packing_qty.get(row.item_code)
+        remaining_qty = packing_qty.copy()
 
-            if qty:
-                row.qty = qty
-                row.transfer_qty = qty
-                row.s_warehouse = pick_list.source_warehouse
-                row.t_warehouse = packing_list.outward_warehouse
+        for row in stock_entry.items:
+            available_qty = flt(remaining_qty.get(row.item_code, 0))
+
+            if available_qty <= 0:
+                row.qty = 0
+                row.transfer_qty = 0
+                continue
+
+            qty = min(flt(row.qty), available_qty)
+
+            row.qty = qty
+            row.transfer_qty = qty
+            row.s_warehouse = pick_list.source_warehouse
+            row.t_warehouse = packing_list.outward_warehouse
+            remaining_qty[row.item_code] = available_qty - qty
 
         stock_entry.insert(ignore_permissions=True)
         stock_entry.submit()
