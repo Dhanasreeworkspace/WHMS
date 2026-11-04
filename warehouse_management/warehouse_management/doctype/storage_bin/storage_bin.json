@@ -11,7 +11,8 @@
   "column_break_bsdu",
   "warehouse",
   "section_break_psku",
-  "items"
+  "items",
+  "total_quantity"
  ],
  "fields": [
   {
@@ -56,12 +57,18 @@
    "fieldtype": "Table",
    "label": "Items",
    "options": "Storage Bin Item"
+  },
+  {
+   "fieldname": "total_quantity",
+   "fieldtype": "Float",
+   "label": "Total Quantity",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-04 10:13:45.981024",
+ "modified": "2026-11-04 11:26:28.879614",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Storage Bin",
