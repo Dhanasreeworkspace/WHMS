@@ -399,6 +399,9 @@ def create_pick_list_from_bins(data=None):
         bin_assignment.insert(ignore_permissions=True)
         bin_assignment_names.append(bin_assignment.name)
 
+    # Update picked bin details in Pick List Item
+    update_picked_bins(pick_list.name)
+
     return {
         "pick_list": pick_list.name,
         "bin_assignments": bin_assignment_names,
@@ -441,3 +444,48 @@ def complete_picking(pick_list):
         "pick_list": pick_list.name,
         "status": "Submitted",
     }
+
+
+def update_picked_bins(pick_list_name):
+    """Update picked bin summary in Pick List Item rows."""
+
+    pick_list = frappe.get_doc("Pick List", pick_list_name)
+
+    bin_assignments = frappe.get_all(
+        "Bin Assignment",
+        filters={
+            "pick_list": pick_list_name,
+            "assignment_type": "Picking",
+        },
+        fields=[
+            "item",
+            "bin",
+            "quantity",
+        ],
+        order_by="creation asc",
+    )
+
+    # Group quantities by item and bin
+    picked_bins = {}
+
+    for assignment in bin_assignments:
+        item_code = assignment.item
+        bin_name = assignment.bin
+
+        item_bins = picked_bins.setdefault(item_code, {})
+
+        item_bins[bin_name] = (
+            item_bins.get(bin_name, 0)
+            + abs(flt(assignment.quantity))
+        )
+
+    # Update existing Pick List Item rows
+    for row in pick_list.locations:
+        bins = picked_bins.get(row.item_code, {})
+
+        row.picked_bins = ", ".join(
+            f"{bin_name} ({qty:g})"
+            for bin_name, qty in bins.items()
+        )
+
+    pick_list.save(ignore_permissions=True)
