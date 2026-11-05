@@ -339,42 +339,34 @@ def create_pick_list_from_bins(data=None):
                 )
             )
 
-    location_map = {(row.item_code, row.rack, row.bin): row for row in pick_list.locations}
+    location_map = {row.item_code: row for row in pick_list.locations}
 
-    for (bin_name, item_code), request in requested_bins.items():
-        mr_item = mr_items[item_code]
-        storage_bin = storage_bin_map[bin_name]
-        rack = storage_bin.rack
-
-        location_key = (item_code, rack, bin_name)
-
-        row = location_map.get(location_key)
+    for item_code, qty in current_qty.items():
+        row = location_map.get(item_code)
 
         if row:
-            row.qty += request["qty"]
+            row.qty += qty
             row.stock_qty = row.qty * flt(row.conversion_factor or 1)
             continue
 
-        row = pick_list.append(
+        mr_item = mr_items[item_code]
+
+        pick_list.append(
             "locations",
             {
                 "item_code": item_code,
                 "item_name": mr_item.item_name,
                 "description": mr_item.description,
-                "qty": request["qty"],
-                "stock_qty": request["qty"] * flt(mr_item.conversion_factor or 1),
+                "qty": qty,
+                "stock_qty": qty * flt(mr_item.conversion_factor or 1),
                 "uom": mr_item.uom,
                 "stock_uom": mr_item.stock_uom,
                 "conversion_factor": mr_item.conversion_factor or 1,
                 "warehouse": mr.set_from_warehouse,
                 "material_request": mr.name,
                 "material_request_item": mr_item.name,
-                "rack": rack,
-                "bin": bin_name,
             },
         )
-
-        location_map[location_key] = row
 
     pick_list.pick_manually = 1
     pick_list.source_warehouse = mr.set_from_warehouse
