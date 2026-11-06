@@ -339,42 +339,34 @@ def create_pick_list_from_bins(data=None):
                 )
             )
 
-    location_map = {(row.item_code, row.rack, row.bin): row for row in pick_list.locations}
+    location_map = {row.item_code: row for row in pick_list.locations}
 
-    for (bin_name, item_code), request in requested_bins.items():
-        mr_item = mr_items[item_code]
-        storage_bin = storage_bin_map[bin_name]
-        rack = storage_bin.rack
-
-        location_key = (item_code, rack, bin_name)
-
-        row = location_map.get(location_key)
+    for item_code, qty in current_qty.items():
+        row = location_map.get(item_code)
 
         if row:
-            row.qty += request["qty"]
+            row.qty += qty
             row.stock_qty = row.qty * flt(row.conversion_factor or 1)
             continue
 
-        row = pick_list.append(
+        mr_item = mr_items[item_code]
+
+        pick_list.append(
             "locations",
             {
                 "item_code": item_code,
                 "item_name": mr_item.item_name,
                 "description": mr_item.description,
-                "qty": request["qty"],
-                "stock_qty": request["qty"] * flt(mr_item.conversion_factor or 1),
+                "qty": qty,
+                "stock_qty": qty * flt(mr_item.conversion_factor or 1),
                 "uom": mr_item.uom,
                 "stock_uom": mr_item.stock_uom,
                 "conversion_factor": mr_item.conversion_factor or 1,
                 "warehouse": mr.set_from_warehouse,
                 "material_request": mr.name,
                 "material_request_item": mr_item.name,
-                "rack": rack,
-                "bin": bin_name,
             },
         )
-
-        location_map[location_key] = row
 
     pick_list.pick_manually = 1
     pick_list.source_warehouse = mr.set_from_warehouse
@@ -406,6 +398,9 @@ def create_pick_list_from_bins(data=None):
 
         bin_assignment.insert(ignore_permissions=True)
         bin_assignment_names.append(bin_assignment.name)
+
+    # Update picked bin details in Pick List Item
+    update_picked_bins(pick_list.name)
 
     return {
         "pick_list": pick_list.name,
@@ -449,3 +444,48 @@ def complete_picking(pick_list):
         "pick_list": pick_list.name,
         "status": "Submitted",
     }
+
+
+def update_picked_bins(pick_list_name):
+    """Update picked bin summary in Pick List Item rows."""
+
+    pick_list = frappe.get_doc("Pick List", pick_list_name)
+
+    bin_assignments = frappe.get_all(
+        "Bin Assignment",
+        filters={
+            "pick_list": pick_list_name,
+            "assignment_type": "Picking",
+        },
+        fields=[
+            "item",
+            "bin",
+            "quantity",
+        ],
+        order_by="creation asc",
+    )
+
+    # Group quantities by item and bin
+    picked_bins = {}
+
+    for assignment in bin_assignments:
+        item_code = assignment.item
+        bin_name = assignment.bin
+
+        item_bins = picked_bins.setdefault(item_code, {})
+
+        item_bins[bin_name] = (
+            item_bins.get(bin_name, 0)
+            + abs(flt(assignment.quantity))
+        )
+
+    # Update existing Pick List Item rows
+    for row in pick_list.locations:
+        bins = picked_bins.get(row.item_code, {})
+
+        row.picked_bins = ", ".join(
+            f"{bin_name} ({qty:g})"
+            for bin_name, qty in bins.items()
+        )
+
+    pick_list.save(ignore_permissions=True)
