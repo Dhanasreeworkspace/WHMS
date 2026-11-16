@@ -58,14 +58,14 @@
   {
    "fieldname": "verified_items",
    "fieldtype": "Int",
-   "label": "Verified Items",
+   "label": "Total Verified Items",
    "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-11 17:43:38.563164",
+ "modified": "2026-11-13 16:01:48.487107",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Box",
