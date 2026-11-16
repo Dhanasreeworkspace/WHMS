@@ -10,11 +10,19 @@
   "naming_series",
   "packing_list",
   "warehouse",
+  "destination_warehouse",
   "column_break_tpkg",
+  "pick_list",
   "material_request",
   "section_break_myps",
   "items",
-  "amended_from"
+  "amended_from",
+  "section_break_hdyn",
+  "total_verified",
+  "column_break_pqiv",
+  "total_qc_passed",
+  "column_break_kmmb",
+  "total_racked"
  ],
  "fields": [
   {
@@ -57,7 +65,7 @@
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "STO-BOX-.YYYY.-"
+   "options": "STO-QC-.YYYY.-"
   },
   {
    "fieldname": "amended_from",
@@ -68,13 +76,58 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "packing_list.pick_list",
+   "fetch_if_empty": 1,
+   "fieldname": "pick_list",
+   "fieldtype": "Link",
+   "label": "Pick List",
+   "options": "Pick List"
+  },
+  {
+   "fetch_from": "packing_list.destination_warehouse",
+   "fieldname": "destination_warehouse",
+   "fieldtype": "Link",
+   "label": "Destination Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "section_break_hdyn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_verified",
+   "fieldtype": "Int",
+   "label": "Total Verified Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pqiv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_qc_passed",
+   "fieldtype": "Int",
+   "label": "Total QC Passed Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kmmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_racked",
+   "fieldtype": "Int",
+   "label": "Total Racked Items",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-12 11:17:57.476887",
+ "modified": "2026-11-13 16:07:26.247288",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Stock Quality Check",
