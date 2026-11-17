@@ -14,6 +14,14 @@ frappe.ui.form.on("Consignment Sales Order", {
                 ]
             };
         });
+        frm.set_query("source_warehouse", function () {
+            return {
+                filters: [
+                    ["Warehouse", "external", "=", 0],
+                    ["Warehouse", "warehouse_type", "=", "Storage"]
+                ]
+            };
+        });
     },
     async customer(frm) {                              //// Automatically set warehouse from selected customer
         if (!frm.doc.customer) {

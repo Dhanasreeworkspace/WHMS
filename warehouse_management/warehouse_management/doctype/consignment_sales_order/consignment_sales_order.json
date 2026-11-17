@@ -8,6 +8,7 @@
   "section_break_mjtq",
   "series",
   "customer",
+  "source_warehouse",
   "column_break_xvvx",
   "date",
   "required_by_date",
@@ -65,6 +66,17 @@
    "reqd": 1
   },
   {
+   "fieldname": "required_by_date",
+   "fieldtype": "Date",
+   "label": "Required By Date"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -73,18 +85,13 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "required_by_date",
-   "fieldtype": "Date",
-   "label": "Required By Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-17 12:12:37.022964",
+ "modified": "2026-11-17 18:20:19.679838",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Consignment Sales Order",
