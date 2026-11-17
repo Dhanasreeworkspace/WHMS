@@ -138,33 +138,46 @@ def get_racking_sqc_items(stock_quality_check, item_code=None, barcode=None):
             "stock_entry_type": "Material Transfer",
             "from_warehouse": sqc.warehouse,
             "to_warehouse": sqc.destination_warehouse,
-            "docstatus": ["<", 2],
+            "docstatus": 0,
         },
         "name",
     )
 
-    # Add bin history only when filtering by item/barcode.
-    if item_code and stock_entry_name:
-        stock_entry_items = frappe.get_all(
-            "Stock Entry Detail",
+    # Get bins containing the item in the destination warehouse.
+    if item_code and item_code in items_map:
+        storage_bin_items = frappe.get_all(
+            "Storage Bin Item",
             filters={
-                "parent": stock_entry_name,
-                "item_code": item_code,
+                "item": item_code,
+                "quantity": [">", 0],
+                "parenttype": "Storage Bin",
             },
-            fields=["rack", "bin", "qty"],
+            fields=["parent", "quantity"],
         )
+
+        bin_names = [row.parent for row in storage_bin_items]
+
+        storage_bins = {
+            row.name: row
+            for row in frappe.get_all(
+                "Storage Bin",
+                filters={
+                    "name": ["in", bin_names],
+                    "warehouse": sqc.destination_warehouse,
+                },
+                fields=["name", "rack"],
+            )
+        } if bin_names else {}
 
         items_map[item_code]["bin_history"] = [
             {
-                "rack": row.rack,
-                "bin": row.bin,
-                "qty": flt(row.qty),
+                "rack": storage_bins[row.parent].rack,
+                "bin": row.parent,
+                "qty": flt(row.quantity),
             }
-            for row in stock_entry_items
+            for row in storage_bin_items
+            if row.parent in storage_bins
         ]
-
-    elif item_code:
-        items_map[item_code]["bin_history"] = []
 
     return {
         "stock_quality_check": sqc.name,
@@ -257,29 +270,21 @@ def move_item_to_storage(data=None):
     # Find Existing Racking Stock Entry
     # --------------------------------------------------
 
-    stock_entries = frappe.get_all(
+    draft_stock_entry = frappe.db.get_value(
         "Stock Entry",
-        filters={
+        {
             "material_request": sqc.material_request,
             "pick_list": sqc.pick_list,
             "stock_entry_type": "Material Transfer",
             "from_warehouse": sqc.warehouse,
             "to_warehouse": sqc.destination_warehouse,
-            "docstatus": ["<", 2],
+            "docstatus": 0,
         },
-        fields=["name", "docstatus"],
+        "name",
     )
 
-    draft_entries = [
-        row for row in stock_entries
-        if row.docstatus == 0
-    ]
-
-    if draft_entries:
-        stock_entry = frappe.get_doc(
-            "Stock Entry",
-            draft_entries[0].name,
-        )
+    if draft_stock_entry:
+        stock_entry = frappe.get_doc("Stock Entry", draft_stock_entry)
     else:
         stock_entry = frappe.new_doc("Stock Entry")
         stock_entry.stock_entry_type = "Material Transfer"
@@ -436,7 +441,7 @@ def move_item_to_storage(data=None):
 
     return {
         "stock_quality_check": sqc.name,
-        "stock_entry": stock_entry.name,
+        "draft_stock_entry": stock_entry.name,
         "item_code": item_code,
         "racked_qty": new_racked_qty,
         "to_rack_qty": max(total_verified_qty - new_racked_qty, 0),
