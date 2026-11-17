@@ -19,7 +19,7 @@ def get_racking_stock_quality_checks(warehouse):
             "pick_list",
             "warehouse",
             "destination_warehouse",
-            "total_verified",
+            "total_qc_passed",
             "total_racked",
         ],
         order_by="creation desc",
@@ -28,10 +28,10 @@ def get_racking_stock_quality_checks(warehouse):
     result = []
 
     for row in quality_checks:
-        total_verified = flt(row.total_verified)
+        total_qc_passed = flt(row.total_qc_passed)
         total_racked = flt(row.total_racked)
 
-        if total_verified <= 0:
+        if total_qc_passed <= 0:
             continue
 
         draft_stock_entry = frappe.db.get_value(
@@ -47,7 +47,7 @@ def get_racking_stock_quality_checks(warehouse):
             "name",
         )
 
-        if total_racked >= total_verified and not draft_stock_entry:
+        if total_racked >= total_qc_passed and not draft_stock_entry:
             continue
 
         result.append({
@@ -203,9 +203,9 @@ def move_item_to_storage(data=None):
 
     quality_items = [row for row in sqc.items if row.item == item_code]
 
-    total_verified_qty = sum(flt(row.verified_qty) for row in quality_items)
+    total_qc_passed_qty = sum(flt(row.qc_passed_qty) for row in quality_items)
     total_racked_qty = sum(flt(row.racked_qty) for row in quality_items)
-    remaining_qty = total_verified_qty - total_racked_qty
+    remaining_qty = total_qc_passed_qty - total_racked_qty
 
     # --------------------------------------------------
     # Fetch Storage Bins
@@ -393,9 +393,7 @@ def move_item_to_storage(data=None):
     pending_qty = total_qty
 
     for quality_item in quality_items:
-        available_qty = (
-            flt(quality_item.verified_qty) - flt(quality_item.racked_qty)
-        )
+        available_qty = flt(quality_item.qc_passed_qty) - flt(quality_item.racked_qty)
 
         if available_qty <= 0:
             continue
@@ -424,9 +422,9 @@ def move_item_to_storage(data=None):
 
     new_total_racked = flt(sqc.total_racked) + total_qty
 
-    if new_total_racked > flt(sqc.total_verified):
+    if new_total_racked > flt(sqc.total_qc_passed):
         frappe.throw(
-            _("Total Racked Qty cannot exceed Total Verified Qty.")
+            _("Total Racked Qty cannot exceed Total QC Passed Qty.")
         )
 
     frappe.db.set_value(
@@ -444,7 +442,7 @@ def move_item_to_storage(data=None):
         "draft_stock_entry": stock_entry.name,
         "item_code": item_code,
         "racked_qty": new_racked_qty,
-        "to_rack_qty": max(total_verified_qty - new_racked_qty, 0),
+        "to_rack_qty": max(total_qc_passed_qty - new_racked_qty, 0),
         "message": _("Item allocated to Rack and Bin successfully."),
     }
 
@@ -473,7 +471,21 @@ def complete_racking(data=None):
     if not stock_entry.items:
         frappe.throw(_("No items found in the Stock Entry."))
 
-    # Validate allocated quantities.
+    # Get Bay Storage Bin from the source warehouse.
+    bay_bin = frappe.db.get_value(
+        "Storage Bin",
+        {"warehouse": stock_entry.from_warehouse},
+        ["name", "rack"],
+        as_dict=True,
+    )
+
+    if not bay_bin:
+        frappe.throw(
+            _("Storage Bin not found for Bay Warehouse {0}.").format(
+                stock_entry.from_warehouse
+            )
+        )
+
     for row in stock_entry.items:
         if flt(row.qty) <= 0:
             frappe.throw(
@@ -483,6 +495,22 @@ def complete_racking(data=None):
             )
 
     stock_entry.submit()
+
+    # Create Picking assignments to deduct quantities from Bay.
+    for row in stock_entry.items:
+        frappe.get_doc({
+            "doctype": "Bin Assignment",
+            "assignment_type": "Picking",
+            "stock_entry": stock_entry.name,
+            "material_request": stock_entry.material_request,
+            "item": row.item_code,
+            "rack": bay_bin.rack,
+            "bin": bay_bin.name,
+            "uom": row.uom,
+            "quantity": row.transfer_qty or row.qty,
+            "batch_no": row.get("batch_no"),
+            "notes": f"Racking transfer from Bay {stock_entry.name}",
+        }).insert(ignore_permissions=True)
 
     return {
         "stock_entry": stock_entry.name,
