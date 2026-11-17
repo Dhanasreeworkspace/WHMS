@@ -30,11 +30,5 @@ frappe.ui.form.on("Consignment Sales Order", {
         const warehouse = message?.consignment_warehouse || "";
 
         await frm.set_value("warehouse", warehouse);
-
-        if (!warehouse) {
-            frappe.msgprint(
-                __("Please configure a Consignment Warehouse for this Customer.")
-            );
-        }
     }
 });
