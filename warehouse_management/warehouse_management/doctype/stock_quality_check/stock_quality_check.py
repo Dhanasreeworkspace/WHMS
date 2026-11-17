@@ -26,3 +26,46 @@ class StockQualityCheck(Document):
                 "Verified",
                 update_modified=True,
             )
+
+        # Get Bay Storage Bin for the verification warehouse.
+        bay_bin = frappe.db.get_value(
+            "Storage Bin",
+            {"warehouse": self.warehouse},
+            ["name", "rack"],
+            as_dict=True,
+        )
+
+        if not bay_bin:
+            frappe.throw(
+                _("Storage Bin not found for Bay Warehouse {0}.").format(
+                    self.warehouse
+                )
+            )
+
+        # Aggregate verified quantities by item.
+        items = {}
+
+        for row in self.items:
+            if row.item not in items:
+                items[row.item] = {
+                    "qty": 0,
+                    "uom": row.uom,
+                }
+
+            items[row.item]["qty"] += flt(row.verified_qty)
+
+        # Create Placing Bin Assignments in Bay.
+        for item_code, item_data in items.items():
+            if item_data["qty"] <= 0:
+                continue
+
+            frappe.get_doc({
+                "doctype": "Bin Assignment",
+                "assignment_type": "Placing",
+                "item": item_code,
+                "rack": bay_bin.rack,
+                "bin": bay_bin.name,
+                "quantity": item_data["qty"],
+                "uom": item_data["uom"],
+                "notes": f"Verification completed for {self.name}",
+            }).insert(ignore_permissions=True)

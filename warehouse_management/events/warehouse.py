@@ -11,7 +11,7 @@ def validate_warehouse_type(doc, method=None):
     """
     
     # External Warehouse validations
-    if doc.external:
+    if doc.get("external"):
 
         if doc.is_sub_warehouse:
             frappe.throw(

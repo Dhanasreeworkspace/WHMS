@@ -431,8 +431,9 @@ def complete_box_verification(data=None):
             "parent": quality_check.packing_list,
             "parenttype": "Packing List",
             "parentfield": "items",
+            "is_received": 1,
         },
-        fields=["box_id", "is_received", "is_verified"],
+        fields=["box_id", "is_verified"],
     )
 
     unverified_boxes = [
