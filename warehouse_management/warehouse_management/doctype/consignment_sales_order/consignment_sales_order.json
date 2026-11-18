@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2026-11-17 10:54:25.112209",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_mjtq",
-  "series",
+  "naming_series",
   "customer",
   "source_warehouse",
   "column_break_xvvx",
@@ -21,14 +22,6 @@
   {
    "fieldname": "section_break_mjtq",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "series",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Series",
-   "options": "CSO-.YYYY.-",
-   "reqd": 1
   },
   {
    "fieldname": "customer",
@@ -85,16 +78,26 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "default": "CSO-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "CSO-.YYYY.-",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-17 18:20:19.679838",
+ "modified": "2026-11-18 11:16:18.179200",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Consignment Sales Order",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
