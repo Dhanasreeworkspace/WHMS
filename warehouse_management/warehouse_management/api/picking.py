@@ -159,6 +159,17 @@ def get_item_storage_bins(warehouse, item_code=None, barcode=None):
 
     item = frappe.get_doc("Item", item_code)
 
+    # Include the main warehouse and its sub-warehouses.
+    warehouses = [warehouse] + frappe.get_all(
+        "Warehouse",
+        filters={
+            "main_warehouse": warehouse,
+            "is_sub_warehouse": 1,
+            "disabled": 0,
+        },
+        pluck="name",
+    )
+
     bin_items = frappe.get_all(
         "Storage Bin Item",
         filters={
@@ -171,14 +182,14 @@ def get_item_storage_bins(warehouse, item_code=None, barcode=None):
         order_by="parent asc",
     )
 
-    if not bin_items:
-        bins = []
-    else:
+    bins = []
+
+    if bin_items:
         storage_bins = frappe.get_all(
             "Storage Bin",
             filters={
                 "name": ["in", list({row.parent for row in bin_items})],
-                "warehouse": warehouse,
+                "warehouse": ["in", warehouses],
             },
             fields=["name", "rack"],
         )
