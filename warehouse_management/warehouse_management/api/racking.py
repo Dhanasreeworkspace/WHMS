@@ -471,17 +471,17 @@ def complete_racking(data=None):
     if not stock_entry.items:
         frappe.throw(_("No items found in the Stock Entry."))
 
-    # Get Bay Storage Bin from the source warehouse.
+    # Get QC Passed Storage Bin from the Bay warehouse.
     bay_bin = frappe.db.get_value(
         "Storage Bin",
-        {"warehouse": stock_entry.from_warehouse},
+        {"warehouse": stock_entry.from_warehouse, "is_flagged": 0},
         ["name", "rack"],
         as_dict=True,
     )
 
     if not bay_bin:
         frappe.throw(
-            _("Storage Bin not found for Bay Warehouse {0}.").format(
+            _("QC Passed Storage Bin not found for Bay Warehouse {0}.").format(
                 stock_entry.from_warehouse
             )
         )
@@ -507,7 +507,7 @@ def complete_racking(data=None):
             "rack": bay_bin.rack,
             "bin": bay_bin.name,
             "uom": row.uom,
-            "quantity": row.transfer_qty or row.qty,
+            "quantity": row.qty,
             "batch_no": row.get("batch_no"),
             "notes": f"Racking transfer from Bay {stock_entry.name}",
         }).insert(ignore_permissions=True)
