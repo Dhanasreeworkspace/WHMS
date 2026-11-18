@@ -7,11 +7,13 @@
  "field_order": [
   "bin_id",
   "rack",
-  "status",
+  "is_flagged",
   "column_break_bsdu",
   "warehouse",
+  "status",
   "section_break_psku",
   "items",
+  "section_break_pyzk",
   "total_quantity"
  ],
  "fields": [
@@ -62,12 +64,22 @@
    "fieldtype": "Float",
    "label": "Total Quantity",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_flagged",
+   "fieldtype": "Check",
+   "label": "Is Flagged"
+  },
+  {
+   "fieldname": "section_break_pyzk",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-04 17:39:16.768827",
+ "modified": "2026-11-18 10:49:29.973505",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Storage Bin",
@@ -82,6 +94,18 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Warehouse Manager",
    "share": 1,
    "write": 1
   }

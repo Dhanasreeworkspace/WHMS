@@ -27,45 +27,47 @@ class StockQualityCheck(Document):
                 update_modified=True,
             )
 
-        # Get Bay Storage Bin for the verification warehouse.
-        bay_bin = frappe.db.get_value(
+        # Get the QC Passed Storage Bin.
+        passed_bin = frappe.db.get_value(
             "Storage Bin",
-            {"warehouse": self.warehouse},
+            {"warehouse": self.warehouse, "is_flagged": 0},
             ["name", "rack"],
             as_dict=True,
         )
 
-        if not bay_bin:
-            frappe.throw(
-                _("Storage Bin not found for Bay Warehouse {0}.").format(
-                    self.warehouse
-                )
-            )
-
-        # Aggregate verified quantities by item.
-        items = {}
+        # Get the Flagged Storage Bin.
+        flagged_bin = frappe.db.get_value(
+            "Storage Bin",
+            {"warehouse": self.warehouse, "is_flagged": 1},
+            ["name", "rack"],
+            as_dict=True,
+        )
 
         for row in self.items:
-            if row.item not in items:
-                items[row.item] = {
-                    "qty": 0,
+            for qty, storage_bin, bin_type in [
+                (flt(row.qc_passed_qty), passed_bin, "QC Passed"),
+                (flt(row.flagged_qty), flagged_bin, "Flagged"),
+            ]:
+                if qty <= 0:
+                    continue
+
+                if not storage_bin:
+                    frappe.throw(
+                        _("{0} Storage Bin not found for Bay Warehouse {1}.").format(
+                            bin_type, self.warehouse
+                        )
+                    )
+
+                frappe.get_doc({
+                    "doctype": "Bin Assignment",
+                    "assignment_type": "Placing",
+                    "item": row.item,
+                    "rack": storage_bin.rack,
+                    "bin": storage_bin.name,
+                    "quantity": qty,
                     "uom": row.uom,
-                }
-
-            items[row.item]["qty"] += flt(row.verified_qty)
-
-        # Create Placing Bin Assignments in Bay.
-        for item_code, item_data in items.items():
-            if item_data["qty"] <= 0:
-                continue
-
-            frappe.get_doc({
-                "doctype": "Bin Assignment",
-                "assignment_type": "Placing",
-                "item": item_code,
-                "rack": bay_bin.rack,
-                "bin": bay_bin.name,
-                "quantity": item_data["qty"],
-                "uom": item_data["uom"],
-                "notes": f"Verification completed for {self.name}",
-            }).insert(ignore_permissions=True)
+                    "material_request": self.material_request,
+                    "pick_list": self.pick_list,
+                    "notes": f"{bin_type} verification completed for {self.name}",
+                }).insert(ignore_permissions=True)
+        
