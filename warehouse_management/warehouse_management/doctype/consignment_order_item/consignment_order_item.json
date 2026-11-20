@@ -47,7 +47,7 @@
  "modified": "2026-11-17 12:15:00.356888",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
- "name": "Consignment Sales Order Item",
+ "name": "Consignment Order Item",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
