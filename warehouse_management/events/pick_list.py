@@ -7,45 +7,82 @@ from warehouse_management.events.material_request import get_warehouse_manager_u
 
 
 def validate_material_requests(doc, method=None):
-    """Only Approved Material Requests can be linked to a Pick List."""
+    """Validate linked Material Request and picking completion."""
 
-    material_requests = {
-        row.material_request
-        for row in doc.locations
-        if row.material_request
-    }
-
-    if not material_requests:
+    if doc.purpose != "Material Transfer" or not doc.material_request:
         return
 
-    invalid_material_requests = frappe.get_all(
-        "Material Request",
-        filters={
-            "name": ["in", list(material_requests)],
-            "workflow_state": ["!=", "Approved"],
-        },
-        fields=["name", "workflow_state"],
-    )
+    mr = frappe.get_doc("Material Request", doc.material_request)
 
-    if invalid_material_requests:
+    if mr.workflow_state != "Approved":
         frappe.throw(
             _("Only Approved Material Requests can be linked to a Pick List.")
         )
 
+    existing_pick_list = frappe.db.exists(
+        "Pick List",
+        {
+            "material_request": mr.name,
+            "docstatus": ["<", 2],
+            "name": ["!=", doc.name],
+        },
+    )
+
+    if existing_pick_list:
+        frappe.throw(
+            _("Another Pick List already exists for Material Request {0}.")
+            .format(mr.name)
+        )
+
+    if method != "before_submit":
+        return
+
+    mr_items = {row.name: row for row in mr.items}
+    picked_qty = {}
+
+    for row in doc.locations:
+        mr_item = mr_items.get(row.material_request_item)
+
+        if not mr_item:
+            frappe.throw(
+                _("Invalid Material Request Item for Item {0}.")
+                .format(row.item_code)
+            )
+
+        if row.item_code != mr_item.item_code:
+            frappe.throw(
+                _("Pick List Item does not match Material Request Item.")
+            )
+
+        picked_qty[row.material_request_item] = (
+            picked_qty.get(row.material_request_item, 0)
+            + flt(row.qty)
+        )
+
+    for row in mr.items:
+        picked = flt(picked_qty.get(row.name, 0))
+        required = flt(row.qty)
+
+        if picked > required:
+            frappe.throw(
+                _("Picked quantity exceeds requested quantity for Item {0}.")
+                .format(row.item_code)
+            )
+
+        if picked < required and not row.is_picking_skipped:
+            frappe.throw(
+                _(
+                    "Item {0} is not fully picked. "
+                    "Complete picking or mark Is Picking Skipped."
+                ).format(row.item_code)
+            )
+
 
 def update_material_request_picking_status(material_request):
-    """Update MR workflow state based on cumulative submitted picking."""
+    """Update MR workflow state after Pick List submission."""
 
     mr = frappe.get_doc("Material Request", material_request)
     previous_state = mr.workflow_state
-
-    required = {}
-    picked = {}
-
-    for row in mr.items:
-        required[row.item_code] = (
-            required.get(row.item_code, 0) + flt(row.qty)
-        )
 
     pick_lists = frappe.get_all(
         "Pick List",
@@ -56,24 +93,35 @@ def update_material_request_picking_status(material_request):
         pluck="name",
     )
 
-    if pick_lists:
-        locations = frappe.get_all(
-            "Pick List Item",
-            filters={"parent": ["in", pick_lists]},
-            fields=["item_code", "qty"],
-        )
+    if not pick_lists:
+        return
 
-        for row in locations:
-            picked[row.item_code] = (
-                picked.get(row.item_code, 0) + flt(row.qty)
-            )
-
-    fully_picked = all(
-        flt(picked.get(item_code, 0)) >= flt(required_qty)
-        for item_code, required_qty in required.items()
+    locations = frappe.get_all(
+        "Pick List Item",
+        filters={
+            "parent": ["in", pick_lists],
+            "parenttype": "Pick List",
+            "parentfield": "locations",
+        },
+        fields=["material_request_item", "qty"],
     )
 
-    workflow_state = "Picked" if fully_picked else "Partially Picked"
+    picked = {}
+
+    for row in locations:
+        picked[row.material_request_item] = (
+            picked.get(row.material_request_item, 0)
+            + flt(row.qty)
+        )
+
+    fully_picked = all(
+        flt(picked.get(row.name, 0)) >= flt(row.qty)
+        for row in mr.items
+    )
+
+    workflow_state = (
+        "Picked" if fully_picked else "Partially Picked"
+    )
 
     frappe.db.set_value(
         "Material Request",
