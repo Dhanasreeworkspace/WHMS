@@ -3,7 +3,37 @@
 
 import frappe
 from frappe import _
-# from frappe.utils.response import build_response
+
+
+@frappe.whitelist(methods=["GET"])
+def get_purchase_orders():
+    """Return pending Purchase Orders for the logged-in user's warehouse."""
+
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": frappe.session.user, "status": "Active"},
+        "active_warehouse"
+    )
+
+    if not employee:
+        frappe.throw(_("No active warehouse assigned to the logged-in user."))
+
+    purchase_orders = frappe.get_list(
+        "Purchase Order",
+        filters={
+            "status": ["in", ["To Receive and Bill", "To Receive"]],
+            "set_warehouse": employee
+        },
+        fields=[
+            "name",
+            "supplier",
+            "supplier_name",
+            "per_received"
+        ],
+        limit_page_length=0
+    )
+
+    frappe.response["data"] = purchase_orders
 
 
 @frappe.whitelist(methods=["POST"])
