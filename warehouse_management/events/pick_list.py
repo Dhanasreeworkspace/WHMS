@@ -37,23 +37,9 @@ def validate_material_requests(doc, method=None):
     if method != "before_submit":
         return
 
-    mr_items = {row.name: row for row in mr.items}
     picked_qty = {}
 
     for row in doc.locations:
-        mr_item = mr_items.get(row.material_request_item)
-
-        if not mr_item:
-            frappe.throw(
-                _("Invalid Material Request Item for Item {0}.")
-                .format(row.item_code)
-            )
-
-        if row.item_code != mr_item.item_code:
-            frappe.throw(
-                _("Pick List Item does not match Material Request Item.")
-            )
-
         picked_qty[row.material_request_item] = (
             picked_qty.get(row.material_request_item, 0)
             + flt(row.qty)
@@ -78,50 +64,26 @@ def validate_material_requests(doc, method=None):
             )
 
 
-def update_material_request_picking_status(material_request):
+def update_material_requests_as_picked(doc, method=None):
     """Update MR workflow state after Pick List submission."""
 
-    mr = frappe.get_doc("Material Request", material_request)
+    mr = frappe.get_doc("Material Request", doc.material_request)
     previous_state = mr.workflow_state
 
-    pick_lists = frappe.get_all(
-        "Pick List",
-        filters={
-            "material_request": mr.name,
-            "docstatus": 1,
-        },
-        pluck="name",
-    )
+    picked_qty = {}
 
-    if not pick_lists:
-        return
-
-    locations = frappe.get_all(
-        "Pick List Item",
-        filters={
-            "parent": ["in", pick_lists],
-            "parenttype": "Pick List",
-            "parentfield": "locations",
-        },
-        fields=["material_request_item", "qty"],
-    )
-
-    picked = {}
-
-    for row in locations:
-        picked[row.material_request_item] = (
-            picked.get(row.material_request_item, 0)
+    for row in doc.locations:
+        picked_qty[row.material_request_item] = (
+            picked_qty.get(row.material_request_item, 0)
             + flt(row.qty)
         )
 
     fully_picked = all(
-        flt(picked.get(row.name, 0)) >= flt(row.qty)
+        flt(picked_qty.get(row.name, 0)) >= flt(row.qty)
         for row in mr.items
     )
 
-    workflow_state = (
-        "Picked" if fully_picked else "Partially Picked"
-    )
+    workflow_state = "Picked" if fully_picked else "Partially Picked"
 
     frappe.db.set_value(
         "Material Request",
@@ -139,61 +101,28 @@ def update_material_request_picking_status(material_request):
         notify_source_warehouse_manager_partial_picking(mr)
 
 
-def update_material_requests_as_picked(doc, method=None):
-    """Recalculate MR picking status after Pick List submission."""
-
-    material_requests = {
-        row.material_request
-        for row in doc.locations
-        if row.material_request
-    }
-
-    for material_request in material_requests:
-        update_material_request_picking_status(material_request)
-
-
 def revert_material_requests_to_approved(doc, method=None):
-    """Recalculate MR picking status after Pick List cancellation."""
+    """Revert MR to Approved when Pick List is cancelled."""
 
-    material_requests = {
-        row.material_request
-        for row in doc.locations
-        if row.material_request
-    }
+    if not doc.material_request:
+        return
 
-    for material_request in material_requests:
-        current_state = frappe.db.get_value(
-            "Material Request",
-            material_request,
-            "workflow_state",
-        )
+    current_state = frappe.db.get_value(
+        "Material Request",
+        doc.material_request,
+        "workflow_state",
+    )
 
-        if current_state not in [
-            "Approved",
-            "Partially Picked",
-            "Picked",
-        ]:
-            continue
+    if current_state not in ["Approved", "Partially Picked", "Picked"]:
+        return
 
-        pick_lists = frappe.get_all(
-            "Pick List",
-            filters={
-                "material_request": material_request,
-                "docstatus": 1,
-            },
-            pluck="name",
-        )
-
-        if not pick_lists:
-            frappe.db.set_value(
-                "Material Request",
-                material_request,
-                "workflow_state",
-                "Approved",
-                update_modified=False,
-            )
-        else:
-            update_material_request_picking_status(material_request)
+    frappe.db.set_value(
+        "Material Request",
+        doc.material_request,
+        "workflow_state",
+        "Approved",
+        update_modified=False,
+    )
 
 
 def delete_bin_assignments_on_pick_list_cancel(doc, method=None):
