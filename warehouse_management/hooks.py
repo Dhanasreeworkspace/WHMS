@@ -14,7 +14,7 @@ fixtures = [
 		"filters": [
 			["dt", "in", ["Purchase Receipt Item", "Stock Entry Detail", "Material Request Item", "Pick List Item"]],
 			["fieldname", "in", [
-				"rack", "bin", "date_of_assignment", "expiry_date", "stock_available_at_source", "assigned_picker", "picked_bins"
+				"rack", "bin", "date_of_assignment", "expiry_date", "stock_available_at_source", "assigned_picker", "picked_bins", "is_picking_skipped"
 			]]
 		]
 	},
@@ -97,7 +97,7 @@ doctype_js = {
 	"Employee" : "public/js/employee.js",
 	"Warehouse" : "public/js/warehouse.js",
 	"Material Request" : "public/js/material_request.js",
-    "Pick List": "public/js/pick_list.js",
+	"Pick List": "public/js/pick_list.js",
 }
 doctype_list_js = {
 	"Material Request": "public/js/material_request_list.js",
@@ -196,17 +196,16 @@ permission_query_conditions = {
 doc_events = {
 	"Purchase Receipt": {
 		"on_submit": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.create_bin_assignments_on_purchase_receipt_submit",
-        "on_cancel": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.delete_bin_assignments_on_purchase_receipt_cancel",
+		"on_cancel": "warehouse_management.warehouse_management.doctype.bin_assignment.bin_assignment.delete_bin_assignments_on_purchase_receipt_cancel",
 	},
 	"Material Request": {
 		"validate": "warehouse_management.events.material_request.validate_warehouse_manager",
 		"before_save": "warehouse_management.events.material_request.update_stock_available_at_source",
 		"on_update": "warehouse_management.events.material_request.notify_warehouse_manager",
-
-        
 	},
 	"Pick List": {
 		"validate": "warehouse_management.events.pick_list.validate_material_requests",
+		"before_submit": "warehouse_management.events.pick_list.validate_material_requests",
 		"on_submit": "warehouse_management.events.pick_list.update_material_requests_as_picked",
 		"on_cancel": [
 			"warehouse_management.events.pick_list.revert_material_requests_to_approved",
