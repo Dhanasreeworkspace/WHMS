@@ -55,7 +55,7 @@ def validate_material_requests(doc, method=None):
                 .format(row.item_code)
             )
 
-        if picked < required and not row.is_picking_skipped:
+        if picked < required and not row.skip_validation:
             frappe.throw(
                 _(
                     "Item {0} is not fully picked. "

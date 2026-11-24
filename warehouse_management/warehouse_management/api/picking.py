@@ -158,7 +158,7 @@ def get_material_request_stock(mr_id, brand=None):
                 "wh_stock_bal": stock_by_item.get(row.item_code, 0),
                 "picked_qty": picked_by_item.get(row.name, 0),
                 "uom": row.uom,
-                "is_picking_skipped": row.is_picking_skipped,
+                "skip_validation": row.skip_validation,
             }
             for row in filtered_items
         ],
@@ -306,7 +306,7 @@ def create_pick_list_from_bins(data=None):
                 .format(mr_item.item_code)
             )
 
-        is_skipped = item.get("is_picking_skipped")
+        is_skipped = item.get("skip_validation")
 
         if is_skipped is not None:
             skipped_items[mr_item_name] = int(is_skipped)
@@ -470,7 +470,7 @@ def create_pick_list_from_bins(data=None):
         frappe.db.set_value(
             "Material Request Item",
             mr_item_name,
-            "is_picking_skipped",
+            "skip_validation",
             is_skipped,
             update_modified=False,
         )
@@ -540,7 +540,7 @@ def complete_picking(pick_list):
     for row in mr.items:
         picked = flt(picked_qty.get(row.name, 0))
 
-        if picked >= flt(row.qty) or row.is_picking_skipped:
+        if picked >= flt(row.qty) or row.skip_validation:
             continue
 
         has_pending_items = True
