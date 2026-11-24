@@ -161,17 +161,66 @@ def notify_source_warehouse_manager_partial_picking(doc):
 
     users = get_warehouse_manager_users({manager_warehouse})
 
+    if not users:
+        return
+
+    pick_lists = frappe.get_all(
+        "Pick List",
+        filters={
+            "material_request": doc.name,
+            "docstatus": 1
+        },
+        pluck="name"
+    )
+
+    if not pick_lists:
+        return
+
+    # Calculate picked quantity per item
+    picked_items = {}
+
+    for row in frappe.get_all(
+        "Pick List Item",
+        filters={
+            "parent": ["in", pick_lists],
+            "parenttype": "Pick List"
+        },
+        fields=["item_code", "qty"]
+    ):
+        picked_items[row.item_code] = (
+            picked_items.get(row.item_code, 0) + flt(row.qty)
+        )
+
+    # Identify items skipped during picking
+    skipped_items = []
+
+    for item in doc.items:
+        required_qty = flt(item.qty)
+        picked_qty = picked_items.get(item.item_code, 0)
+
+        if picked_qty < required_qty:
+            skipped_items.append(
+                f"{item.item_name} ({item.item_code}): "
+                f"Required {required_qty:g} {item.uom}, "
+                f"Picked {picked_qty:g} {item.uom}"
+            )
+
+    if not skipped_items:
+        return
+
+    email_content = (
+        f"<b>Warehouse:</b> {source_warehouse}<br><br>"
+        f"<b>Items Skipped During Picking:</b><br>"
+        + "<br>".join(skipped_items)
+    )
+
     for user in users:
         frappe.get_doc({
             "doctype": "Notification Log",
             "subject": f"Material Request {doc.name} Partially Picked",
-            "email_content": (
-                f"Items from {doc.name} has been partially picked "
-                f"from warehouse {source_warehouse}. "
-                "Please take note of the updated picking status."
-            ),
+            "email_content": email_content,
             "for_user": user,
             "type": "Alert",
-            "document_type": "Material Request",
-            "document_name": doc.name,
+            "document_type": "Pick List",
+            "document_name": pick_lists[0],
         }).insert(ignore_permissions=True)
