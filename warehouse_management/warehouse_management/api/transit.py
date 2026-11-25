@@ -15,7 +15,14 @@ def get_driver_packing_lists(source_warehouse):
             "docstatus": 1,
             "source_warehouse": source_warehouse,
         },
-        fields=["name", "pick_list", "material_request", "total_boxes"],
+        fields=[
+            "name",
+            "pick_list",
+            "material_request",
+            "total_boxes",
+            "source_warehouse",
+            "destination_warehouse",
+        ],
         order_by="modified desc",
     )
 
@@ -29,7 +36,7 @@ def get_driver_packing_lists(source_warehouse):
             "docstatus": 1,
         },
         pluck="pick_list",
-    )
+    ) if pick_list_names else []
 
     transit_pick_lists = set(transit_pick_lists)
 
@@ -38,6 +45,8 @@ def get_driver_packing_lists(source_warehouse):
             "packing_list": row.name,
             "mr_id": row.material_request,
             "total_boxes": row.total_boxes,
+            "from_wh": row.source_warehouse,
+            "to_wh": row.destination_warehouse,
         }
         for row in packing_lists
         if row.pick_list not in transit_pick_lists
