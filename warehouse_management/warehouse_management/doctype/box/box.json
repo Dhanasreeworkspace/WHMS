@@ -17,10 +17,9 @@
  "fields": [
   {
    "fieldname": "packing_list",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Packing List",
-   "options": "Packing List",
    "reqd": 1
   },
   {
@@ -65,7 +64,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-13 16:01:48.487107",
+ "modified": "2026-11-25 16:00:48.045202",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Box",
