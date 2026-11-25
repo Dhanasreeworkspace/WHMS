@@ -30,6 +30,7 @@ def get_pick_lists():
             "status": "Open",
             "source_warehouse": active_warehouse,
         },
+        fields=["name", "material_request"],
         order_by="modified desc",
     )
 
