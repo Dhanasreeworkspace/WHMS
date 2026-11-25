@@ -1,5 +1,9 @@
 frappe.ui.form.on("Pick List", {
     refresh(frm) {
+        // Filter custom Source and Destination Warehouse fields
+        set_main_warehouse_query(frm, "source_warehouse");
+        set_main_warehouse_query(frm, "destination_warehouse");
+
         if (frm.doc.docstatus !== 1) {
             return;
         }

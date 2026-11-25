@@ -1,5 +1,9 @@
 frappe.ui.form.on("Material Request", {
     refresh: function(frm) {
+        // Filter custom Source and Destination Warehouse fields
+        set_main_warehouse_query(frm, "set_from_warehouse");
+        set_main_warehouse_query(frm, "set_warehouse");
+
         if (frm.doc.docstatus === 0) {
             update_available_stock(frm);
         }

@@ -76,6 +76,7 @@ fixtures = [
 # app_include_css = "/assets/warehouse_management/css/warehouse_management.css"
 app_include_js = [
 	"/assets/warehouse_management/js/stock_availability.js",
+    "/assets/warehouse_management/js/warehouse_filter.js"
 ]
 
 # include js, css files in header of web template
