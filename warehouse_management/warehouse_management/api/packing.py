@@ -30,7 +30,7 @@ def get_pick_lists():
             "status": "Open",
             "source_warehouse": active_warehouse,
         },
-        fields=["name", "material_request"],
+        fields=["name", "material_request", "is_consignment"],
         order_by="modified desc",
     )
 
@@ -165,6 +165,7 @@ def create_packing_box(data=None):
         packing_list.material_request = pick_list.material_request
         packing_list.company = pick_list.company
         packing_list.outward_warehouse = outward_warehouse
+        packing_list.is_consignment = pick_list.is_consignment
         packing_list.insert(ignore_permissions=True)
 
     # ---------------------------------------------------------

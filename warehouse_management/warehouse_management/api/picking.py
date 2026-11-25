@@ -23,6 +23,7 @@ def get_material_requests(source_warehouse):
             "name",
             "set_from_warehouse",
             "set_warehouse",
+            "is_consignment",
         ],
         order_by="modified desc",
     )
@@ -68,6 +69,7 @@ def get_material_requests(source_warehouse):
                 "mr_id": mr.name,
                 "source_warehouse": mr.set_from_warehouse,
                 "target_warehouse": mr.set_warehouse,
+                "is_consignment": mr.is_consignment,
                 "pick_list": draft_pick_list_map.get(mr.name),
                 "status": (
                     "In Progress"
@@ -263,6 +265,9 @@ def create_pick_list_from_bins(data=None):
     else:
         pick_list = make_pick_list(mr.name)
         pick_list.locations = []
+
+    pick_list.is_consignment = mr.is_consignment
+    pick_list.save(ignore_permissions=True)
 
     mr_items = {
         row.name: row

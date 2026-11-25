@@ -19,6 +19,7 @@ def get_driver_packing_lists(source_warehouse):
             "name",
             "pick_list",
             "material_request",
+            "is_consignment",
             "total_boxes",
             "source_warehouse",
             "destination_warehouse",
@@ -44,6 +45,7 @@ def get_driver_packing_lists(source_warehouse):
         {
             "packing_list": row.name,
             "mr_id": row.material_request,
+            "is_consignment": row.is_consignment,
             "total_boxes": row.total_boxes,
             "from_wh": row.source_warehouse,
             "to_wh": row.destination_warehouse,
