@@ -149,6 +149,7 @@ def get_material_request_stock(mr_id, brand=None):
 
     return {
         "mr_id": mr.name,
+        "is_consignment": mr.is_consignment,
         "warehouse": warehouse,
         "pick_list": draft_pick_list,
         "items": [

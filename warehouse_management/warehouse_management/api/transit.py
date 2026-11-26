@@ -74,6 +74,7 @@ def get_packing_list_details(packing_list):
 
     return {
         "packing_list": packing_list_doc.name,
+        "is_consignment": packing_list_doc.is_consignment,
         "pick_list": packing_list_doc.pick_list,
         "total_boxes": packing_list_doc.total_boxes,
         "boxes": [
