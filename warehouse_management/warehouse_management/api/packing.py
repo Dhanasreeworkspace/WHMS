@@ -78,6 +78,8 @@ def get_pick_lists():
 def get_pick_list_items(pick_list):
     """Return Pick List items with packed qty."""
 
+    pick_list_doc = frappe.get_doc("Pick List", pick_list)
+
     packing_list = frappe.db.get_value(
         "Packing List",
         {
@@ -108,6 +110,7 @@ def get_pick_list_items(pick_list):
 
     return {
         "packing_list": packing_list,
+        "is_consignment": pick_list_doc.is_consignment,
         "data": items,
     }
 

@@ -6,7 +6,9 @@ function set_main_warehouse_query(frm, fieldname) {
             filters: [
                 ["Warehouse", "is_group", "=", 0],
                 ["Warehouse", "is_sub_warehouse", "=", 0],
-                ["Warehouse", "disabled", "=", 0]
+                ["Warehouse", "disabled", "=", 0],
+                ["Warehouse", "external", "=", 0],
+                ["Warehouse", "warehouse_type", "!=", "Transit"]
             ]
         };
     };
