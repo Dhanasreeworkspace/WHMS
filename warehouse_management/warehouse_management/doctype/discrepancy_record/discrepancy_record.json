@@ -142,7 +142,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-15 16:46:26.441941",
+ "modified": "2026-11-17 14:24:22.091111",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Discrepancy Record",
@@ -170,18 +170,6 @@
    "read": 1,
    "report": 1,
    "role": "Warehouse Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Purchase Manager",
    "share": 1,
    "write": 1
   }
