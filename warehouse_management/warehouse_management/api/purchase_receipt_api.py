@@ -3,6 +3,9 @@
 
 import frappe
 from frappe import _
+from frappe.utils import cint
+from frappe.utils.file_manager import get_file_path
+from pathlib import Path
 
 
 @frappe.whitelist(methods=["GET"])
@@ -28,12 +31,59 @@ def get_purchase_orders():
             "name",
             "supplier",
             "supplier_name",
-            "per_received"
+            "per_received",
+            "supplier_pack_list"
         ],
         limit_page_length=0
     )
 
+    for po in purchase_orders:
+        po.supplier_pack_list = bool(po.supplier_pack_list)
+
     frappe.response["data"] = purchase_orders
+
+
+@frappe.whitelist(methods=["GET"])
+def get_po_supplier_pack_list(purchase_order, download=0):
+    """Return Supplier Pack List details or download the attachment."""
+
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    po.check_permission("read")
+
+    if not po.supplier_pack_list:
+        return None
+
+    file = frappe.db.get_value(
+        "File",
+        {
+            "file_url": po.supplier_pack_list,
+            "attached_to_doctype": "Purchase Order",
+            "attached_to_name": po.name
+        },
+        ["name", "file_name", "file_url", "is_private"],
+        as_dict=True
+    )
+
+    if not file:
+        frappe.throw(_("Attached file not found."))
+
+    if cint(download):
+        file_path = Path(get_file_path(file.file_url))
+
+        if not file_path.is_file():
+            frappe.throw(_("Attached file not found."))
+
+        frappe.local.response.filename = file.file_name
+        frappe.local.response.filecontent = file_path.read_bytes()
+        frappe.local.response.type = "download"
+        return
+
+    return {
+        "purchase_order": po.name,
+        "file_name": file.file_name,
+        "is_private": bool(file.is_private),
+        "file": file.name
+    }
 
 
 @frappe.whitelist(methods=["POST"])
