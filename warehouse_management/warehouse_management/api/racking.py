@@ -474,7 +474,7 @@ def complete_racking(data=None):
     # Get QC Passed Storage Bin from the Bay warehouse.
     bay_bin = frappe.db.get_value(
         "Storage Bin",
-        {"warehouse": stock_entry.from_warehouse, "is_flagged": 0},
+        {"warehouse": stock_entry.from_warehouse, "is_flagged": 0, "is_default": 1},
         ["name", "rack"],
         as_dict=True,
     )

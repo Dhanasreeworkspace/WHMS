@@ -30,7 +30,7 @@ class StockQualityCheck(Document):
         # Get the QC Passed Storage Bin.
         passed_bin = frappe.db.get_value(
             "Storage Bin",
-            {"warehouse": self.warehouse, "is_flagged": 0},
+            {"warehouse": self.warehouse, "is_flagged": 0, "is_default": 1},
             ["name", "rack"],
             as_dict=True,
         )
@@ -38,7 +38,7 @@ class StockQualityCheck(Document):
         # Get the Flagged Storage Bin.
         flagged_bin = frappe.db.get_value(
             "Storage Bin",
-            {"warehouse": self.warehouse, "is_flagged": 1},
+            {"warehouse": self.warehouse, "is_flagged": 1, "is_default": 1},
             ["name", "rack"],
             as_dict=True,
         )
