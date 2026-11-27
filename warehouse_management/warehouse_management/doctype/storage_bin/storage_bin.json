@@ -8,6 +8,7 @@
   "bin_id",
   "rack",
   "is_flagged",
+  "is_default",
   "column_break_bsdu",
   "warehouse",
   "status",
@@ -74,12 +75,18 @@
   {
    "fieldname": "section_break_pyzk",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Default Warehouse Bin "
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-18 10:49:29.973505",
+ "modified": "2026-11-27 11:20:00.329862",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Storage Bin",
