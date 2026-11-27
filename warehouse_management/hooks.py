@@ -100,7 +100,6 @@ doctype_js = {
 	"Material Request" : "public/js/material_request.js",
 	"Pick List": "public/js/pick_list.js",
     "Purchase Order": "public/js/purchase_order.js",
-    "Purchase Receipt": "public/js/purchase_receipt.js",
 }
 doctype_list_js = {
 	"Material Request": "public/js/material_request_list.js",
