@@ -165,3 +165,56 @@ def create_stock_entry(data=None):
         "to_warehouse": transit_wh,
         "destination_warehouse": pick_list.destination_warehouse,
     }
+
+@frappe.whitelist()
+def get_driver_consignments(source_warehouse, vehicle):
+    """Return in-transit Packing Lists of the driver"""
+
+    packing_lists = frappe.get_all(
+        "Packing List",
+        filters={
+            "docstatus": 1,
+            "is_consignment": 1,
+            "source_warehouse": source_warehouse,
+        },
+        fields=[
+            "name",
+            "pick_list",
+            "material_request",
+            "is_consignment",
+            "total_boxes",
+            "source_warehouse",
+            "destination_warehouse",
+        ],
+        order_by="modified desc",
+    )
+
+    pick_list_names = [row.pick_list for row in packing_lists if row.pick_list]
+
+    transit_pick_lists = frappe.get_all(
+        "Stock Entry",
+        filters={
+            "pick_list": ["in", pick_list_names],
+            "add_to_transit": 1,
+            "to_warehouse": vehicle,
+            "docstatus": 1,
+        },
+        pluck="pick_list",
+    ) if pick_list_names else []
+
+    transit_pick_lists = set(transit_pick_lists)
+
+    result = [
+        {
+            "packing_list": row.name,
+            "mr_id": row.material_request,
+            "is_consignment": row.is_consignment,
+            "total_boxes": row.total_boxes,
+            "from_wh": row.source_warehouse,
+            "to_wh": row.destination_warehouse,
+        }
+        for row in packing_lists
+        if row.pick_list in transit_pick_lists
+    ]
+
+    return {"data": result}
