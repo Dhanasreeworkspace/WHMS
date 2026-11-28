@@ -84,7 +84,10 @@ class ConsignmentSalesOrder(Document):
                 "from_warehouse": self.source_warehouse,
                 "warehouse": self.warehouse
             })
-
+        
+        material_request.custom_created_through_cso = self.name
+        
         material_request.insert(ignore_permissions=True)
-
+        material_request.submit()
+        
         return material_request.name

@@ -153,7 +153,8 @@
    "default": "0",
    "fieldname": "is_consignment",
    "fieldtype": "Check",
-   "label": "Is Consignment"
+   "label": "Is Consignment",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -165,7 +166,7 @@
    "link_fieldname": "packing_list"
   }
  ],
- "modified": "2026-11-25 14:26:43.376390",
+ "modified": "2026-11-28 16:17:59.856672",
  "modified_by": "Administrator",
  "module": "Warehouse Management",
  "name": "Packing List",
