@@ -218,3 +218,35 @@ def get_driver_consignments(source_warehouse, vehicle):
     ]
 
     return {"data": result}
+
+@frappe.whitelist()
+def finish_consignment_transfer(packing_list_id):
+    """Finish consignment transfer by submitting the Stock Entry."""
+
+    pick_list = frappe.db.get_value("Packing List", packing_list_id, "pick_list")
+
+    #get the transit stock entry for the packing list
+    transit_se = frappe.get_doc(
+        "Stock Entry",
+        {
+            "pick_list": pick_list,
+            "add_to_transit": 1,
+            "is_consignment": 1,
+            "docstatus": 1
+        }
+    )
+
+    stock_entry = frappe.get_doc(make_stock_in_entry(transit_se.name))
+    stock_entry.from_warehouse = transit_se.to_warehouse
+    stock_entry.to_warehouse = transit_se.destination_warehouse
+    stock_entry.destination_warehouse = None
+    stock_entry.add_to_transit = 0
+    stock_entry.pick_list = transit_se.pick_list
+    stock_entry.material_request = transit_se.material_request
+
+    return {
+            "end_transit_stock_entry": stock_entry.name,
+            "material_request": transit_se.material_request,
+            "from_warehouse": transit_se.to_warehouse,
+            "to_warehouse": transit_se.destination_warehouse,
+        }
