@@ -206,6 +206,17 @@ def get_driver_consignments(source_warehouse, vehicle):
 
     transit_pick_lists = set(transit_pick_lists)
 
+    end_consignment_se = frappe.db.exists(
+        "Stock Entry",
+        {
+            "pick_list": ["in", pick_list_names],
+            "add_to_transit": 0,
+            "docstatus": 1,
+            "is_consignment": 1,
+            "to_warehouse": packing_list.destination_warehouse,
+        },
+    )
+
     result = [
         {
             "packing_list": row.name,
@@ -216,7 +227,7 @@ def get_driver_consignments(source_warehouse, vehicle):
             "to_wh": row.destination_warehouse,
         }
         for row in packing_lists
-        if row.pick_list in transit_pick_lists
+        if row.pick_list in transit_pick_lists and not end_consignment_se
     ]
 
     return {"data": result}
