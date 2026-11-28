@@ -220,10 +220,15 @@ def get_driver_consignments(source_warehouse, vehicle):
     return {"data": result}
 
 @frappe.whitelist()
-def finish_consignment_transfer(packing_list_id):
+def finish_consignment_transfer(data=None):
     """Finish consignment transfer by submitting the Stock Entry."""
 
-    pick_list = frappe.db.get_value("Packing List", packing_list_id, "pick_list")
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    data = data or frappe.form_dict
+
+    pick_list = frappe.db.get_value("Packing List", data.get("packing_list_id"), "pick_list")
 
     #get the transit stock entry for the packing list
     transit_se = frappe.get_doc(
