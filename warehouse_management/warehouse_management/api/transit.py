@@ -170,7 +170,7 @@ def create_stock_entry(data=None):
 
 @frappe.whitelist()
 def get_driver_consignments(source_warehouse, vehicle):
-    """Return in-transit Packing Lists of the driver"""
+    """Return in-transit Packing Lists of the driver."""
 
     packing_lists = frappe.get_all(
         "Packing List",
@@ -191,31 +191,40 @@ def get_driver_consignments(source_warehouse, vehicle):
         order_by="modified desc",
     )
 
-    pick_list_names = [row.pick_list for row in packing_lists if row.pick_list]
+    pick_list_names = list({
+        row.pick_list for row in packing_lists if row.pick_list
+    })
 
-    transit_pick_lists = frappe.get_all(
+    if not pick_list_names:
+        return {"data": []}
+
+    stock_entries = frappe.get_all(
         "Stock Entry",
         filters={
             "pick_list": ["in", pick_list_names],
-            "add_to_transit": 1,
-            "to_warehouse": vehicle,
             "docstatus": 1,
         },
-        pluck="pick_list",
-    ) if pick_list_names else []
-
-    transit_pick_lists = set(transit_pick_lists)
-
-    end_consignment_se = frappe.db.exists(
-        "Stock Entry",
-        {
-            "pick_list": ["in", pick_list_names],
-            "add_to_transit": 0,
-            "docstatus": 1,
-            "is_consignment": 1,
-            "to_warehouse": packing_list.destination_warehouse,
-        },
+        fields=[
+            "pick_list",
+            "add_to_transit",
+            "to_warehouse",
+            "is_consignment",
+        ],
     )
+
+    # Pick Lists transferred to the driver's vehicle
+    transit_pick_lists = {
+        se.pick_list
+        for se in stock_entries
+        if se.add_to_transit and se.to_warehouse == vehicle
+    }
+
+    # Completed consignment transfers
+    completed_transfers = {
+        (se.pick_list, se.to_warehouse)
+        for se in stock_entries
+        if not se.add_to_transit and se.is_consignment
+    }
 
     result = [
         {
@@ -227,7 +236,10 @@ def get_driver_consignments(source_warehouse, vehicle):
             "to_wh": row.destination_warehouse,
         }
         for row in packing_lists
-        if row.pick_list in transit_pick_lists and not end_consignment_se
+        if (
+            row.pick_list in transit_pick_lists
+            and (row.pick_list, row.destination_warehouse) not in completed_transfers
+        )
     ]
 
     return {"data": result}
