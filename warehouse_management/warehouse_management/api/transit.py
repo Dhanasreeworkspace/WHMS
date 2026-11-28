@@ -123,6 +123,7 @@ def create_stock_entry(data=None):
         "pick_list": pick_list.name,
         "material_request": pick_list.material_request,
         "add_to_transit": 1,
+        "is_consignment": pick_list.is_consignment,
     })
 
     for row in pick_list.locations:
