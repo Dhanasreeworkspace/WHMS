@@ -251,6 +251,8 @@ def finish_consignment_transfer(data=None):
     stock_entry.pick_list = transit_se.pick_list
     stock_entry.material_request = transit_se.material_request
 
+    stock_entry.submit()
+
     return {
             "end_transit_stock_entry": stock_entry.name,
             "material_request": transit_se.material_request,
