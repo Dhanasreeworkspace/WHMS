@@ -4,6 +4,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from erpnext.stock.doctype.stock_entry.stock_entry import make_stock_in_entry
+
 
 @frappe.whitelist()
 def get_driver_packing_lists(source_warehouse):
