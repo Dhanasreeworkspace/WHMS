@@ -251,6 +251,7 @@ def complete_packing_list(data=None):
         stock_entry.destination_warehouse = pick_list.destination_warehouse
         stock_entry.to_warehouse = packing_list.outward_warehouse
         stock_entry.add_to_transit = 0
+        stock_entry.is_consignment = pick_list.is_consignment
 
         boxes = frappe.get_all(
             "Box",
